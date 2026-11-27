@@ -80,7 +80,7 @@
     .icon { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.85; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
     .icon-sm { width: 16px; height: 16px; }
 
-    .container { max-width: 1220px; margin: 0 auto; padding: 22px 20px 44px; }
+    .container { width: 100%; max-width: 1480px; margin: 0 auto; padding: 22px 28px 48px; }
 
     /* Auth & Loading Views */
     .center-wrap {
@@ -158,7 +158,7 @@
       position: sticky; top: 0; z-index: 30;
     }
     .topbar-inner {
-      max-width: 1220px; margin: 0 auto; padding: 11px 20px;
+      width: 100%; max-width: 1480px; margin: 0 auto; padding: 11px 28px;
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
     }
     .topbar .mobile-brand { display: none; }
@@ -550,6 +550,28 @@
     }
     @media (max-width: 520px) {
       .modal-grid-2, .modal-grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .desk-grid-2 { grid-template-columns: 1fr; }
+
+    /* Desktop-First Expansive Layout (>=1024px) */
+    @media (min-width: 1024px) {
+      .finance-hero {
+        flex-direction: row; align-items: center; justify-content: space-between;
+        gap: 24px; padding: 18px 24px;
+      }
+      .hero-top { flex: 1 1 auto; align-items: center; }
+      .hero-breakdown {
+        padding-top: 0; padding-left: 24px;
+        border-top: none; border-left: 1px solid rgba(255, 255, 255, .14);
+        gap: 24px; flex-shrink: 0;
+      }
+      .hero-mini-val { font-size: 18px; }
+    }
+    @media (min-width: 1180px) {
+      .desk-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .cal-layout { grid-template-columns: minmax(0, 2fr) 360px; gap: 20px; }
+      .cal-cell { min-height: 96px; }
     }
 
     /* Touch-First Sizing on Mobile & Tablet (<=1024px) */
@@ -972,7 +994,7 @@
               </select>
             </div>
           </div>
-          <div id="issuedDocsList" class="doc-grid" style="grid-template-columns:1fr;"></div>
+          <div id="issuedDocsList" class="doc-grid desk-grid-2"></div>
         </div>
 
         <div id="sub-finance-verify" class="hidden">
@@ -1124,7 +1146,7 @@
               </select>
             </div>
           </div>
-          <div id="projectsList" class="doc-grid" style="grid-template-columns:1fr;"></div>
+          <div id="projectsList" class="doc-grid desk-grid-2"></div>
         </div>
 
         <div id="sub-work-calendar">
@@ -1228,7 +1250,7 @@
             </select>
           </div>
         </div>
-        <div id="counterpartiesList" style="display:grid;gap:10px;"></div>
+        <div id="counterpartiesList" class="doc-grid desk-grid-2"></div>
       </section>
         </main>
       </div>
