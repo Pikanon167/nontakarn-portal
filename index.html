@@ -921,7 +921,7 @@
           <div class="filter-row">
             <div class="search-wrap">
               <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="expSearch" type="search" placeholder="ค้นหาร้าน, ผู้รับ, REC-..." oninput="debouncedRender('exp', renderExpenses)">
+              <input id="expSearch" type="search" placeholder="ค้นหาร้าน, ชื่อ/รหัสโปรเจกต์, ผู้รับ, REC-..." oninput="debouncedRender('exp', renderExpenses)">
             </div>
             <button id="expFilterBtn" type="button" class="btn btn-outline btn-sm" aria-expanded="false" onclick="toggleDrawer('expDrawer', 'expFilterBtn')">
               <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
@@ -2362,13 +2362,15 @@
     }
 
     function filterAndSortLogs(logs, q, fType, fEmp, fMonth, sortBy) {
+      const prjMap = new Map((STATE.projects || []).map(p => [String(p.projectId || "").trim().toUpperCase(), p]));
       const list = logs.filter(l => {
         const dt = l.docDate || String(l.date || "").slice(0, 10);
         const type = l.docType || "อื่นๆ";
         if (fType && type !== fType) return false;
         if (fEmp && l.by !== fEmp) return false;
         if (fMonth && !dt.startsWith(fMonth)) return false;
-        return smartMatch(`${l.receiptId} ${type} ${l.vendor} ${l.fromTo || ""} ${l.amt} ${l.sum} ${l.file} ${l.by} ${dt}`, q);
+        const prj = l.projectId ? prjMap.get(String(l.projectId).trim().toUpperCase()) : null;
+        return smartMatch(`${l.receiptId} ${l.company || ""} ${l.projectId || ""} ${prj ? `${prj.title || ""} ${prj.customer || ""}` : ""} ${type} ${l.vendor} ${l.fromTo || ""} ${l.amt} ${l.sum} ${l.userNote || ""} ${l.file} ${l.by} ${dt}`, q);
       });
       list.sort((a, b) => {
         const da = a.docDate || String(a.date || "").slice(0, 10);
@@ -2555,6 +2557,8 @@
           toast(res.movedToDrive ? `บันทึกและย้ายไฟล์ไป ${res.movedToDrive} แล้ว` : "บันทึกการแก้ไขแล้ว");
           renderExpenses();
           renderOtherDocs();
+          renderProjects();
+          renderProjectDetail();
           if (typeof renderVerify === "function") renderVerify();
           refreshBadgesAndPulse_();
           syncPortalCache_();
@@ -2744,10 +2748,16 @@
             btn.textContent = "อัปโหลดและวิเคราะห์";
             if (!res || !res.ok) return handleApiError_(res, "อัปโหลดไม่สำเร็จ");
             closeModal("uploadDocModal");
-            const stockMsg = res.stockAdded > 0 ? ` · +คลัง ${res.stockAdded} รายการ` : "";
-            toast(res.aiSkipped
-              ? `บันทึกแล้ว ${res.receiptId} (ไฟล์ > 4 MB บันทึกลง Drive โดยตรง)`
-              : `บันทึกแล้ว ${res.receiptId} (${res.docType} · ${res.company})${stockMsg}`);
+            if (res.alreadyLinked) {
+              toast(`ไฟล์ ${res.receiptId} ผูกอยู่กับโปรเจกต์ ${res.projectId} อยู่แล้ว`);
+            } else if (res.linkedExisting) {
+              toast(`พบไฟล์เดิมในระบบ (${res.receiptId}) — ผูกเข้าโปรเจกต์ ${res.projectId} เรียบร้อย`);
+            } else {
+              const stockMsg = res.stockAdded > 0 ? ` · +คลัง ${res.stockAdded} รายการ` : "";
+              toast(res.aiSkipped
+                ? `บันทึกแล้ว ${res.receiptId} (ไฟล์ > 4 MB บันทึกลง Drive โดยตรง)`
+                : `บันทึกแล้ว ${res.receiptId} (${res.docType} · ${res.company})${stockMsg}`);
+            }
             loadData(false, true);
           }, err => {
             btn.disabled = false;
@@ -2832,6 +2842,8 @@
       }
 
       const isAdmin = STATE.user && String(STATE.user.role || "").toLowerCase() === "admin";
+      const isTeam = STATE.user && ["admin", "manager", "management"].includes(String(STATE.user.role || "").toLowerCase());
+      const prjTitleMap = new Map((STATE.projects || []).map(p => [p.projectId, p.title || ""]));
       const body = document.getElementById("expBody");
       const mob = document.getElementById("expMobileList");
       if (!list.length) {
@@ -2847,9 +2859,10 @@
         const sign = isIn ? "+" : "-";
         const amtCls = isIn ? "amt-in" : "amt-out";
         const coBadge = !curCo ? ` <span class="co-pill ${companyPillClass(l.company)}">${esc(l.company || "Nontakarn")}</span>` : "";
-        const prjBadge = l.projectId ? ` <span class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;">${esc(l.projectId)}</span>` : "";
+        const prjBadge = l.projectId ? ` <button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" title="${esc(prjTitleMap.get(l.projectId) || l.projectId)}" onclick="openProjectDetail('${escJsAttr(l.projectId)}')">${esc(l.projectId)}</button>` : "";
         const noCountBadge = l.countCashflow === "No" ? ` <span class="co-pill" style="color:#64748b;">ไม่นับยอด</span>` : "";
-        const flipBtn = isAdmin ? ` <button type="button" class="flip-btn" title="สลับรายรับ/รายจ่าย" onclick="flipFlow('${escJsAttr(l.receiptId)}', ${l.row}, '${escJsAttr(l.flow || "รายจ่าย")}')">${isIn ? "รับ⇄จ่าย" : "จ่าย⇄รับ"}</button> <button type="button" class="flip-btn" title="แก้ไขรายละเอียด/บริษัท" onclick="openEditLog(${l.row})">แก้ไข</button>` : "";
+        const linkBtn = isTeam ? ` <button type="button" class="flip-btn" title="${l.projectId ? "ย้ายหรือเอาออกจากโปรเจกต์" : "ผูกเข้าโปรเจกต์"}" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${l.row},'${escJsAttr(l.projectId || "")}')">${l.projectId ? "ย้ายโปรเจกต์" : "+ ผูกโปรเจกต์"}</button>` : "";
+        const flipBtn = (isAdmin ? ` <button type="button" class="flip-btn" title="สลับรายรับ/รายจ่าย" onclick="flipFlow('${escJsAttr(l.receiptId)}', ${l.row}, '${escJsAttr(l.flow || "รายจ่าย")}')">${isIn ? "รับ⇄จ่าย" : "จ่าย⇄รับ"}</button> <button type="button" class="flip-btn" title="แก้ไขรายละเอียด/บริษัท" onclick="openEditLog(${l.row})">แก้ไข</button>` : "") + linkBtn;
         return `
           <tr title="${esc(l.sum)}">
             <td style="white-space:nowrap;" class="num"><strong>${esc(fmtDispDate(dt))}</strong></td>
@@ -2873,7 +2886,9 @@
         const sign = isIn ? "+" : "-";
         const amtCls = isIn ? "amt-in" : "amt-out";
         const coBadge = !curCo ? `<span class="co-pill ${companyPillClass(l.company)}">${esc(l.company || "Nontakarn")}</span>` : "";
-        const flipBtn = isAdmin ? `<button type="button" class="flip-btn" onclick="flipFlow('${escJsAttr(l.receiptId)}', ${l.row}, '${escJsAttr(l.flow || "รายจ่าย")}')">${isIn ? "รับ⇄จ่าย" : "จ่าย⇄รับ"}</button><button type="button" class="flip-btn" onclick="openEditLog(${l.row})">แก้ไข</button>` : "";
+        const prjBadge = l.projectId ? `<button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" title="${esc(prjTitleMap.get(l.projectId) || l.projectId)}" onclick="openProjectDetail('${escJsAttr(l.projectId)}')">${esc(l.projectId)}</button>` : "";
+        const linkBtn = isTeam ? `<button type="button" class="flip-btn" title="${l.projectId ? "ย้ายหรือเอาออกจากโปรเจกต์" : "ผูกเข้าโปรเจกต์"}" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${l.row},'${escJsAttr(l.projectId || "")}')">${l.projectId ? "ย้ายโปรเจกต์" : "+ ผูกโปรเจกต์"}</button>` : "";
+        const flipBtn = (isAdmin ? `<button type="button" class="flip-btn" onclick="flipFlow('${escJsAttr(l.receiptId)}', ${l.row}, '${escJsAttr(l.flow || "รายจ่าย")}')">${isIn ? "รับ⇄จ่าย" : "จ่าย⇄รับ"}</button><button type="button" class="flip-btn" onclick="openEditLog(${l.row})">แก้ไข</button>` : "") + linkBtn;
         return `
           <article class="m-item ${isIn ? "m-item-in" : "m-item-out"}">
             <div class="m-head">
@@ -2884,7 +2899,7 @@
                   <div class="m-sub" style="margin-top:2px;">
                     <span class="num">${esc(fmtDispDate(dt))}</span>
                     <span class="tag ${tagCls}">${esc(l.docType)}</span>
-                    ${coBadge}
+                    ${coBadge}${prjBadge}
                   </div>
                 </div>
               </div>
