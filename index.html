@@ -1422,6 +1422,26 @@
     </div>
   </div>
 
+  <!-- RELINK / MOVE / ATTACH PROJECT DOC MODAL -->
+  <div id="relinkDocModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="relinkDocTitle" onclick="if(event.target===this)closeModal('relinkDocModal')">
+    <div class="confirm-card" style="max-width:460px;">
+      <div id="relinkDocTitle" class="confirm-title">ย้าย / ผูกเอกสารเข้าโปรเจกต์</div>
+      <div id="relinkDocDesc" style="font-size:13px;color:var(--ink-muted);margin:6px 0 12px;"></div>
+      <div id="relinkMoveWrap" class="field hidden">
+        <label for="relinkTargetProject">เลือกโปรเจกต์ปลายทาง</label>
+        <select id="relinkTargetProject"></select>
+      </div>
+      <div id="relinkAttachWrap" class="field hidden">
+        <label for="relinkExistingDoc">เลือกเอกสารที่ยังไม่ผูกโปรเจกต์</label>
+        <select id="relinkExistingDoc"></select>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('relinkDocModal')">ยกเลิก</button>
+        <button type="button" id="btnRelinkSubmit" class="btn btn-primary btn-sm" onclick="submitRelinkDoc()">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
   <!-- PRODUCT CREATE MODAL -->
   <div id="productModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('productModal')">
     <div class="confirm-card" style="max-width:440px;">
@@ -3280,14 +3300,21 @@
             const muted = d.status === "Cancelled" ? "opacity:.55;" : "";
             return `<div class="prj-doc-row" style="${muted}">
               <div><strong class="num">${esc(d.docId)}</strong> · <span class="tag">${esc(d.status)}</span> · <span class="num">${fmtNum(d.grandTotal)} ฿</span></div>
-              <div style="display:flex;gap:6px;align-items:center;">${d.pdfUrl ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(d.pdfUrl))}" target="_blank" rel="noopener">เปิด PDF</a>` : ""}</div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                ${d.pdfUrl ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(d.pdfUrl))}" target="_blank" rel="noopener">เปิด PDF</a>` : ""}
+                ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveProjectDoc('issued','${escJsAttr(d.docId)}',0,'${escJsAttr(p.projectId)}')">ย้าย</button><button type="button" class="btn btn-danger btn-sm" onclick="confirmUnlinkProjectDoc('issued','${escJsAttr(d.docId)}',0)">เอาออก</button>` : ""}
+              </div>
             </div>`;
           }
           if (entry.kind === "log") {
             const l = entry.item;
             return `<div class="prj-doc-row">
               <div><strong class="num">${esc(l.receiptId)}</strong> · ${esc(l.docType || l.flow)} · <span class="num">${esc(l.amt || "-")}</span></div>
-              <div style="display:flex;gap:6px;align-items:center;"><span class="tag">${esc(l.verifyStatus || "-")}</span>${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์</a>` : ""}</div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                <span class="tag">${esc(l.verifyStatus || "-")}</span>
+                ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์</a>` : ""}
+                ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0},'${escJsAttr(p.projectId)}')">ย้าย</button><button type="button" class="btn btn-danger btn-sm" onclick="confirmUnlinkProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0})">เอาออก</button>` : ""}
+              </div>
             </div>`;
           }
           const sr = entry.item;
@@ -3332,7 +3359,10 @@
           <div style="font-size:13px;font-weight:700;">เอกสาร / บิลอื่นๆ ที่ผูกกับโปรเจกต์ (${pipe.otherLogs.length})</div>
           ${pipe.otherLogs.map(l => `<div class="prj-doc-row">
             <div><strong class="num">${esc(l.receiptId)}</strong> · ${esc(l.docType || l.flow)} · ${esc(l.sum || l.vendor || "-")} · <span class="num">${esc(l.amt || "-")}</span></div>
-            ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์</a>` : ""}
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์</a>` : ""}
+              ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0},'${escJsAttr(p.projectId)}')">ย้าย</button><button type="button" class="btn btn-danger btn-sm" onclick="confirmUnlinkProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0})">เอาออก</button>` : ""}
+            </div>
           </div>`).join("")}
         </div>` : "";
 
@@ -3354,7 +3384,8 @@
             <div class="confirm-title" style="margin-top:4px;">${esc(p.title)}</div>
             <div style="font-size:12.5px;color:var(--ink-muted);">ลูกค้า: ${esc(p.customer || "-")}${p.note ? " · " + esc(p.note) : ""}</div>
           </div>
-          <div style="display:flex;gap:6px;align-items:center;">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openAttachExistingDoc('${escJsAttr(p.projectId)}')">+ ผูกเอกสารเดิม</button>` : ""}
             ${canDeleteDetail ? `<button type="button" class="btn btn-danger btn-sm" onclick="confirmDeleteProject('${escJsAttr(p.projectId)}','${escJsAttr(p.title)}')">Delete</button>` : ""}
             <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('projectDetailModal')">ปิด</button>
           </div>
@@ -3437,6 +3468,133 @@
           loadData();
         }, err => toast(err.message));
       }, true);
+    }
+
+    let RELINK_CTX = null;
+
+    function applyLocalDocProjectLink(kind, id, rowNum, nextProjectId) {
+      const targetUpper = String(id || "").trim().toUpperCase();
+      if (kind === "issued") {
+        (STATE.issuedDocs || []).forEach(d => {
+          if (String(d.docId || "").trim().toUpperCase() === targetUpper) d.projectId = nextProjectId;
+        });
+        (STATE.logs || []).forEach(l => {
+          if (String(l.receiptId || "").trim().toUpperCase() === targetUpper) l.projectId = nextProjectId;
+        });
+      } else if (kind === "log") {
+        (STATE.logs || []).forEach(l => {
+          const sameId = targetUpper && String(l.receiptId || "").trim().toUpperCase() === targetUpper;
+          const sameRow = Number(rowNum) > 0 && Number(l.row) === Number(rowNum);
+          if (sameId || sameRow) l.projectId = nextProjectId;
+        });
+      }
+      renderProjectDetail();
+      renderProjects();
+      renderIssuedDocs();
+      renderExpenses();
+      renderTodayPulse();
+    }
+
+    function confirmUnlinkProjectDoc(kind, id, rowNum) {
+      openConfirm(
+        "เอาเอกสารออกจากโปรเจกต์?",
+        `ยืนยันเอา ${id} ออกจากโปรเจกต์นี้? (เอกสารและไฟล์ PDF ยังอยู่ครบ ไม่ถูกลบ สามารถผูกใหม่ได้ทีหลัง)`,
+        "เอาออก",
+        () => {
+          callApi("linkProjectDoc", "apiLinkProjectDoc", [SESSION_TOKEN, kind, id, rowNum, ""], res => {
+            if (!res || !res.ok) return handleApiError_(res, "เอาเอกสารออกไม่สำเร็จ");
+            applyLocalDocProjectLink(kind, id, rowNum, "");
+            toast(`เอา ${id} ออกจากโปรเจกต์แล้ว`);
+          }, err => toast(err.message));
+        },
+        true
+      );
+    }
+
+    function openMoveProjectDoc(kind, id, rowNum, currentProjectId) {
+      RELINK_CTX = { mode: "move", kind, id, rowNum };
+      document.getElementById("relinkDocTitle").textContent = `ย้ายเอกสาร ${id}`;
+      document.getElementById("relinkDocDesc").textContent = "เลือกโปรเจกต์ใหม่ หรือเอาออกจากโปรเจกต์ (ไฟล์และข้อมูลบิลยังคงอยู่ครบ)";
+      document.getElementById("relinkMoveWrap").classList.remove("hidden");
+      document.getElementById("relinkAttachWrap").classList.add("hidden");
+      const opts = [`<option value="">— เอาออกจากโปรเจกต์ (ไม่ผูกโปรเจกต์) —</option>`].concat(
+        (STATE.projects || []).map(pr =>
+          `<option value="${esc(pr.projectId)}" ${pr.projectId === currentProjectId ? "selected" : ""}>${esc(pr.projectId)} · ${esc(pr.title)}</option>`
+        )
+      );
+      document.getElementById("relinkTargetProject").innerHTML = opts.join("");
+      document.getElementById("btnRelinkSubmit").disabled = false;
+      document.getElementById("relinkDocModal").classList.remove("hidden");
+    }
+
+    function openAttachExistingDoc(targetProjectId) {
+      RELINK_CTX = { mode: "attach", targetProjectId };
+      document.getElementById("relinkDocTitle").textContent = `ผูกเอกสารเดิมเข้า ${targetProjectId}`;
+      document.getElementById("relinkDocDesc").textContent = "เลือกเอกสารที่ออกไว้แล้วหรือบิลที่ยังไม่ได้ผูกโปรเจกต์";
+      document.getElementById("relinkMoveWrap").classList.add("hidden");
+      document.getElementById("relinkAttachWrap").classList.remove("hidden");
+
+      const issuedIds = new Set((STATE.issuedDocs || []).map(d => String(d.docId || "").trim().toUpperCase()));
+      const unlinkedIssued = (STATE.issuedDocs || []).filter(d => !String(d.projectId || "").trim());
+      const unlinkedLogs = (STATE.logs || []).filter(l => {
+        if (String(l.projectId || "").trim()) return false;
+        const rid = String(l.receiptId || "").trim().toUpperCase();
+        return !rid || !issuedIds.has(rid);
+      });
+
+      const opts = [];
+      unlinkedIssued.forEach(d => {
+        const val = JSON.stringify({ kind: "issued", id: d.docId, rowNum: 0 });
+        opts.push(`<option value="${esc(val)}">[PDF] ${esc(d.docId)} · ${esc(d.customerName || "-")} (${fmtNum(d.grandTotal)} ฿)</option>`);
+      });
+      unlinkedLogs.forEach(l => {
+        const val = JSON.stringify({ kind: "log", id: l.receiptId, rowNum: Number(l.row) || 0 });
+        opts.push(`<option value="${esc(val)}">[บิล] ${esc(l.receiptId)} · ${esc(l.docType || l.flow)} · ${esc(l.vendor || l.sum || "-")} (${esc(l.amt || "-")})</option>`);
+      });
+
+      const sel = document.getElementById("relinkExistingDoc");
+      const btn = document.getElementById("btnRelinkSubmit");
+      if (!opts.length) {
+        sel.innerHTML = `<option value="">ไม่มีเอกสาร/บิลที่ยังไม่ผูกโปรเจกต์</option>`;
+        btn.disabled = true;
+      } else {
+        sel.innerHTML = opts.join("");
+        btn.disabled = false;
+      }
+      document.getElementById("relinkDocModal").classList.remove("hidden");
+    }
+
+    function submitRelinkDoc() {
+      if (!RELINK_CTX) return;
+      let kind = RELINK_CTX.kind;
+      let id = RELINK_CTX.id;
+      let rowNum = RELINK_CTX.rowNum || 0;
+      let nextProjectId = "";
+
+      if (RELINK_CTX.mode === "move") {
+        nextProjectId = document.getElementById("relinkTargetProject").value;
+      } else {
+        const raw = document.getElementById("relinkExistingDoc").value;
+        if (!raw) return toast("กรุณาเลือกเอกสาร");
+        const parsed = JSON.parse(raw);
+        kind = parsed.kind;
+        id = parsed.id;
+        rowNum = parsed.rowNum || 0;
+        nextProjectId = RELINK_CTX.targetProjectId;
+      }
+
+      const btn = document.getElementById("btnRelinkSubmit");
+      btn.disabled = true;
+      callApi("linkProjectDoc", "apiLinkProjectDoc", [SESSION_TOKEN, kind, id, rowNum, nextProjectId], res => {
+        btn.disabled = false;
+        if (!res || !res.ok) return handleApiError_(res, "อัปเดตการผูกโปรเจกต์ไม่สำเร็จ");
+        applyLocalDocProjectLink(kind, id, rowNum, nextProjectId);
+        closeModal("relinkDocModal");
+        toast(nextProjectId ? `ผูก ${id} เข้า ${nextProjectId} แล้ว` : `เอา ${id} ออกจากโปรเจกต์แล้ว`);
+      }, err => {
+        btn.disabled = false;
+        toast(err.message);
+      });
     }
 
     function openProjectModal() {
