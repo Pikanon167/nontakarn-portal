@@ -3360,7 +3360,7 @@
           return `<span class="prj-mini-dot ${s.state}">${icon ? icon + " " : ""}${esc(s.short)}</span>${line}`;
         }).join("");
         const tplSpec = PROJECT_TEMPLATES[pipe.wf.template] || PROJECT_TEMPLATES.standard;
-        const canDelete = isTeam && pipe.issued.length === 0 && pipe.logs.length === 0 && pipe.serials.length === 0;
+        const canDelete = isTeam;
         const schedChips = [
           pipe.wf.appointDate ? `<span class="prj-date-pill">นัด: <strong class="num">${esc(fmtDispDate(pipe.wf.appointDate))}</strong></span>` : "",
           pipe.wf.workStart ? `<span class="prj-date-pill">ทำงาน: <strong class="num">${esc(fmtDispDate(pipe.wf.workStart))}${pipe.wf.workEnd && pipe.wf.workEnd !== pipe.wf.workStart ? " – " + esc(fmtDispDate(pipe.wf.workEnd)) : ""}</strong></span>` : ""
@@ -3460,12 +3460,25 @@
 
         const btns = [];
         if (isTeam && !s.isSkip) {
-          if (s.issueType) {
-            const whtDef = (s.key === "payment" && pipe.wf.template === "service_wht") ? 3 : 0;
-            btns.push(`<button type="button" class="btn btn-primary btn-sm" onclick="openIssueDocModal({docType:'${s.issueType}',company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',customer:'${escJsAttr(p.customer)}',whtRate:${whtDef}})">+ ออก ${s.issueType} (PDF)</button>`);
-          }
-          if (s.issueAlt) {
-            btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="openIssueDocModal({docType:'${s.issueAlt}',company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',customer:'${escJsAttr(p.customer)}'})">+ ออก ${s.issueAlt}</button>`);
+          if (s.key === "payment") {
+            const hasActiveTaxOrReceipt = s.docs.some(x =>
+              (x.kind === "issued" && (x.item.docType === "TX" || x.item.docType === "RC") && x.item.status !== "Cancelled") ||
+              (x.kind === "log" && ["ใบกำกับภาษี", "ใบเสร็จรับเงิน"].includes(String(x.item.docType || "")))
+            );
+            if (!hasActiveTaxOrReceipt) {
+              if (s.issueType) {
+                const whtDef = (pipe.wf.template === "service_wht") ? 3 : 0;
+                btns.push(`<button type="button" class="btn btn-primary btn-sm" onclick="openIssueDocModal({docType:'${s.issueType}',company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',customer:'${escJsAttr(p.customer)}',whtRate:${whtDef}})">+ ออก ${s.issueType} (PDF)</button>`);
+              }
+              if (s.issueAlt) {
+                btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="openIssueDocModal({docType:'${s.issueAlt}',company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',customer:'${escJsAttr(p.customer)}'})">+ ออก ${s.issueAlt}</button>`);
+              }
+            }
+          } else if (s.issueType) {
+            const hasActiveStepDoc = s.docs.some(x => x.kind !== "issued" || x.item.status !== "Cancelled");
+            if (!hasActiveStepDoc) {
+              btns.push(`<button type="button" class="btn btn-primary btn-sm" onclick="openIssueDocModal({docType:'${s.issueType}',company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',customer:'${escJsAttr(p.customer)}',whtRate:0})">+ ออก ${s.issueType} (PDF)</button>`);
+            }
           }
           if (s.uploadNote) {
             btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="openUploadModal({company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',flow:'${escJsAttr(s.uploadFlow || "")}',note:'${escJsAttr(s.uploadNote)}'})">อัปโหลด / แนบบิล</button>`);
@@ -3508,7 +3521,7 @@
       ).join("");
 
       const tplBadge = (PROJECT_TEMPLATES[pipe.wf.template] || PROJECT_TEMPLATES.standard).badge;
-      const canDeleteDetail = isTeam && pipe.issued.length === 0 && pipe.logs.length === 0 && pipe.serials.length === 0;
+      const canDeleteDetail = isTeam;
       body.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
           <div>
@@ -3599,14 +3612,29 @@
     }
 
     function confirmDeleteProject(projectId, title) {
-      openConfirm("ลบโปรเจกต์?", `ยืนยันลบ ${esc(projectId)} (${esc(title)}) ออกจากระบบ? (ลบได้เฉพาะโปรเจกต์ที่ยังไม่มีเอกสาร/บิล/สต็อกผูกอยู่)`, "Delete", () => {
+      const targetUpper = String(projectId || "").trim().toUpperCase();
+      const linkedLogs = (STATE.logs || []).filter(l => String(l.projectId || "").trim().toUpperCase() === targetUpper).length;
+      const linkedIssued = (STATE.issuedDocs || []).filter(d => String(d.projectId || "").trim().toUpperCase() === targetUpper).length;
+      const linkedSerials = ((STATE.inventory && STATE.inventory.serials) || []).filter(s => String(s.projectId || "").trim().toUpperCase() === targetUpper).length;
+      const linkedTotal = linkedLogs + linkedIssued + linkedSerials;
+      const unlinkNote = linkedTotal > 0
+        ? `เอกสาร/บิล/Serial ที่ผูกอยู่ (${linkedTotal} รายการ) จะถูกปลดการผูกออกโดยไม่ถูกลบ และเลขโปรเจกต์จะรันต่อตามลำดับเดิม`
+        : `เลขโปรเจกต์จะรันต่อตามลำดับเดิม (ไม่นำเลขเดิมกลับมาใช้ซ้ำ)`;
+      openConfirm("ลบโปรเจกต์?", `ยืนยันลบ ${esc(projectId)} (${esc(title)}) ออกจากระบบ? ${unlinkNote}`, "Delete", () => {
         callApi("deleteProject", "apiDeleteProject", [SESSION_TOKEN, projectId], res => {
           closeConfirm();
           if (!res || !res.ok) return handleApiError_(res, "ลบโปรเจกต์ไม่สำเร็จ");
+          (STATE.logs || []).forEach(l => { if (String(l.projectId || "").trim().toUpperCase() === targetUpper) l.projectId = ""; });
+          (STATE.issuedDocs || []).forEach(d => { if (String(d.projectId || "").trim().toUpperCase() === targetUpper) d.projectId = ""; });
+          if (STATE.inventory && Array.isArray(STATE.inventory.serials)) {
+            STATE.inventory.serials.forEach(s => { if (String(s.projectId || "").trim().toUpperCase() === targetUpper) s.projectId = ""; });
+          }
           STATE.projects = (STATE.projects || []).filter(p => p.projectId !== projectId);
           closeModal("projectDetailModal");
           toast(`ลบโปรเจกต์ ${projectId} แล้ว`);
           renderProjects();
+          renderIssuedDocs();
+          renderExpenses();
           renderCalendar();
           refreshBadgesAndPulse_();
           syncPortalCache_();
