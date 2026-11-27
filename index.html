@@ -3270,10 +3270,10 @@
       standard: { badge: "Product + Install", label: "Product + Install (ขายสินค้า + ติดตั้ง — 6 ขั้น)", skipped: [] },
       service_wht: { badge: "Service (WHT)", label: "Service (WHT) — งานบริการ / จ้างทำของ (เน้น 50 ทวิ)", skipped: ["po", "delivery"] },
       product_only: { badge: "Product Sale", label: "Product Sale — ขายสินค้าทั่วไป (ไม่มี 50 ทวิ)", skipped: ["wht"] },
-      procurement: { badge: "Procurement", label: "Procurement — จัดซื้อ / ผู้รับเหมา (ฝั่งรายจ่าย)", skipped: ["qt", "iv"] }
+      procurement: { badge: "Procurement", label: "Procurement — จัดซื้อ / ผู้รับเหมา (ฝั่งรายจ่าย)", skipped: ["iv"] }
     };
     const PROJECT_STEPS = [
-      { key: "qt", short: "1. QT", title: "ใบเสนอราคา (Quotation)", hint: "เสนอราคาให้ลูกค้าอนุมัติก่อนเริ่มงาน", issueType: "QT" },
+      { key: "qt", short: "1. QT", title: "ใบเสนอราคา (Quotation)", hint: "ออก QT เสนอลูกค้า หรืออัปโหลด QT จากฝั่งคู่ค้า/ผู้ขาย", issueType: "QT", uploadFlow: "รายจ่าย", uploadNote: "ใบเสนอราคา (QT ฝั่งเขา)", uploadLabel: "อัปโหลด QT (ฝั่งเขา)" },
       { key: "po", short: "2. PO", title: "ใบสั่งซื้อ (Purchase Order)", hint: "ออก PO สั่งของ หรือรับ PO จากลูกค้า", issueType: "PO", uploadFlow: "รายจ่าย", uploadNote: "ใบสั่งซื้อ PO" },
       { key: "delivery", short: "3. ส่งมอบ", title: "ส่งมอบสินค้า / ตัด Serial", hint: "ตัดสต็อก Serial ให้โปรเจกต์ หรือติ๊กส่งมอบแล้ว", manualAction: true },
       { key: "iv", short: "4. วางบิล", title: "ใบแจ้งหนี้ / วางบิล (Invoice)", hint: "ออกใบวางบิลเรียกเก็บเงินลูกค้า", issueType: "IV", uploadFlow: "รายรับ", uploadNote: "ใบแจ้งหนี้/วางบิล" },
@@ -3304,11 +3304,14 @@
       logs.forEach(l => {
         const dt = String(l.docType || "");
         const sm = String(l.sum || "");
+        const nt = String(l.userNote || "");
         const rid = l.receiptId + ":" + l.row;
+        const text = `${dt} ${sm} ${nt}`;
         if (dt.includes("50 ทวิ")) { matched.wht.push({ kind: "log", item: l }); usedLogIds.add(rid); }
+        else if (/\bQT\b|ใบเสนอราคา|quotation/i.test(text)) { matched.qt.push({ kind: "log", item: l }); usedLogIds.add(rid); }
+        else if (/\bPO\b|ใบสั่งซื้อ|purchase\s*order/i.test(text)) { matched.po.push({ kind: "log", item: l }); usedLogIds.add(rid); }
         else if (dt === "ใบแจ้งหนี้/วางบิล") { matched.iv.push({ kind: "log", item: l }); usedLogIds.add(rid); }
         else if (["สลิปโอนเงิน", "ใบกำกับภาษี", "ใบเสร็จรับเงิน"].includes(dt)) { matched.payment.push({ kind: "log", item: l }); usedLogIds.add(rid); }
-        else if (/\bPO\b|ใบสั่งซื้อ/i.test(dt + " " + sm)) { matched.po.push({ kind: "log", item: l }); usedLogIds.add(rid); }
       });
       const otherLogs = logs.filter(l => !usedLogIds.has(l.receiptId + ":" + l.row));
 
@@ -3445,8 +3448,10 @@
           }
           if (entry.kind === "log") {
             const l = entry.item;
+            const sideBadge = s.key === "qt" ? ` <span class="tag tag-slip">QT ฝั่งเขา</span>` : "";
+            const noteText = l.userNote ? ` · <span style="color:#0369a1;">${esc(l.userNote)}</span>` : "";
             return `<div class="prj-doc-row">
-              <div><strong class="num">${esc(l.receiptId)}</strong> · ${esc(l.docType || l.flow)} · <span class="num">${esc(l.amt || "-")}</span></div>
+              <div><strong class="num">${esc(l.receiptId)}</strong> · ${esc(l.docType || l.flow)}${sideBadge} · <span class="num">${esc(l.amt || "-")}</span>${noteText}</div>
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <span class="tag">${esc(l.verifyStatus || "-")}</span>
                 ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">เปิดไฟล์</a>` : ""}
@@ -3481,7 +3486,7 @@
             }
           }
           if (s.uploadNote) {
-            btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="openUploadModal({company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',flow:'${escJsAttr(s.uploadFlow || "")}',note:'${escJsAttr(s.uploadNote)}'})">อัปโหลด / แนบบิล</button>`);
+            btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="openUploadModal({company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',flow:'${escJsAttr(s.uploadFlow || "")}',note:'${escJsAttr(s.uploadNote)}'})">${esc(s.uploadLabel || "อัปโหลด / แนบบิล")}</button>`);
           }
           if (s.manualAction) {
             btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="toggleProjectStepDone('${escJsAttr(p.projectId)}','${s.key}')">${s.manualDone ? "ยกเลิกติ๊กส่งมอบ" : "✓ ติ๊กส่งมอบแล้ว"}</button>`);
