@@ -1349,6 +1349,7 @@
         </div>
       </div>
       <div class="confirm-actions">
+        <button type="button" id="editReceiveStockBtn" class="btn btn-outline btn-sm hidden" onclick="receiveStockFromEditModal()">+ รับเข้าคลัง</button>
         <button type="button" class="btn btn-outline btn-sm" onclick="closeEditLog()">ยกเลิก</button>
         <button type="button" id="editSaveBtn" class="btn btn-primary btn-sm" onclick="saveEditLog()">บันทึก</button>
       </div>
@@ -2468,6 +2469,16 @@
       document.getElementById("editFromTo").value = item.fromTo && item.fromTo !== "-" ? item.fromTo : "";
       document.getElementById("editAmt").value = item.amt && item.amt !== "-" ? item.amt : "";
       document.getElementById("editSum").value = item.sum && item.sum !== "-" ? item.sum : "";
+      const rcBtn = document.getElementById("editReceiveStockBtn");
+      if (rcBtn) {
+        const isTeam = STATE.user && ["admin", "manager", "management"].includes(String(STATE.user.role || "").toLowerCase());
+        const receivedSet = new Set(((STATE.inventory && STATE.inventory.lots) || []).map(x => String(x.purchaseReceiptId || "").trim().toUpperCase()).filter(Boolean));
+        const recUpper = String(item.receiptId || "").trim().toUpperCase();
+        const showRc = isTeam && item.flow !== "รายรับ" && (!recUpper || !receivedSet.has(recUpper));
+        rcBtn.classList.toggle("hidden", !showRc);
+        rcBtn.disabled = false;
+        rcBtn.textContent = "+ รับเข้าคลัง";
+      }
       document.getElementById("editSaveBtn").disabled = false;
       document.getElementById("editLogModal").classList.remove("hidden");
     }
@@ -3423,6 +3434,13 @@
       const isTeam = STATE.user && ["admin", "manager", "management"].includes(String(STATE.user.role || "").toLowerCase());
       const pipe = computeProjectPipeline(p);
       const whtNote = pipe.whtExpected > 0 ? ` · มียอดหัก ณ ที่จ่ายรอรับ ${fmtNum(pipe.whtExpected)} ฿` : "";
+      const receivedRecIds = new Set(((STATE.inventory && STATE.inventory.lots) || []).map(x => String(x.purchaseReceiptId || "").trim().toUpperCase()).filter(Boolean));
+      const stockBtnForLog = l => {
+        if (!isTeam || l.flow === "รายรับ") return "";
+        const rid = String(l.receiptId || "").trim().toUpperCase();
+        if (rid && receivedRecIds.has(rid)) return `<span class="tag tag-ok">✓ เข้าคลังแล้ว</span>`;
+        return `<button type="button" class="btn btn-outline btn-sm" onclick="receiveStockFromLog(this,'${escJsAttr(l.receiptId)}',${Number(l.row) || 0},'${escJsAttr(p.projectId)}')">+ รับเข้าคลัง</button>`;
+      };
 
       const railHtml = pipe.steps.map((s, idx) => {
         const badge = s.state === "done" ? "✓" : (s.state === "skip" ? "–" : String(idx + 1));
@@ -3456,6 +3474,7 @@
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <span class="tag">${esc(l.verifyStatus || "-")}</span>
                 ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">เปิดไฟล์</a>` : ""}
+                ${stockBtnForLog(l)}
                 ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0},'${escJsAttr(p.projectId)}')">ย้าย</button><button type="button" class="btn btn-danger btn-sm" onclick="confirmUnlinkProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0})">เอาออก</button>` : ""}
               </div>
             </div>`;
@@ -3517,6 +3536,7 @@
             <div><strong class="num">${esc(l.receiptId)}</strong> · ${esc(l.docType || l.flow)} · ${esc(l.sum || l.vendor || "-")} · <span class="num">${esc(l.amt || "-")}</span></div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
               ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">เปิดไฟล์</a>` : ""}
+              ${stockBtnForLog(l)}
               ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0},'${escJsAttr(p.projectId)}')">ย้าย</button><button type="button" class="btn btn-danger btn-sm" onclick="confirmUnlinkProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0})">เอาออก</button>` : ""}
             </div>
           </div>`).join("")}
@@ -4046,6 +4066,41 @@
           toast(`รับเข้าคลังสำเร็จ (${res.lotId})`);
           loadData(false, true);
         }, err => { btn.disabled = false; toast(err.message); });
+    }
+
+    function receiveStockFromLog(btn, receiptId, rowNum, projectId, fromEditModal) {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "กำลังรับเข้า...";
+      }
+      callApi("receiveStockFromLog", "apiReceiveStockFromLog", [SESSION_TOKEN, receiptId, rowNum, projectId || ""], res => {
+        if (!res || !res.ok) {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "+ รับเข้าคลัง";
+          }
+          return handleApiError_(res, "รับเข้าคลังไม่สำเร็จ");
+        }
+        if (res.skipped && res.reason === "already_received") {
+          toast("เอกสารนี้รับเข้าคลังไปแล้ว");
+        } else {
+          toast(`รับเข้าคลังสำเร็จ ${res.added || 0} รายการ (${res.source === "ocr" ? "อ่านจากเอกสาร" : "จากรายละเอียดบิล"})`);
+        }
+        if (fromEditModal) closeEditLog();
+        loadData(false, true);
+      }, err => {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "+ รับเข้าคลัง";
+        }
+        toast(err.message);
+      });
+    }
+
+    function receiveStockFromEditModal() {
+      if (!EDITING_LOG) return;
+      const btn = document.getElementById("editReceiveStockBtn");
+      receiveStockFromLog(btn, EDITING_LOG.receiptId, EDITING_LOG.row, EDITING_LOG.projectId || "", true);
     }
 
     function openMoveStockModal(lotId) {
