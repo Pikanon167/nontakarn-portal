@@ -1,0 +1,9 @@
+{
+  "name": "Nontakarn Operations Portal",
+  "short_name": "NK Portal",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ecefe9",
+  "theme_color": "#0f4c45",
+  "description": "Nontakarn & TIM Connection Document Vault, Finance, Inventory & Calendar Portal"
+}
