@@ -2689,9 +2689,10 @@
             btn.textContent = "อัปโหลดและวิเคราะห์";
             if (!res || !res.ok) return handleApiError_(res, "อัปโหลดไม่สำเร็จ");
             closeModal("uploadDocModal");
+            const stockMsg = res.stockAdded > 0 ? ` · +คลัง ${res.stockAdded} รายการ` : "";
             toast(res.aiSkipped
               ? `บันทึกแล้ว ${res.receiptId} (ไฟล์ > 4 MB บันทึกลง Drive โดยตรง)`
-              : `บันทึกแล้ว ${res.receiptId} (${res.docType} · ${res.company})`);
+              : `บันทึกแล้ว ${res.receiptId} (${res.docType} · ${res.company})${stockMsg}`);
             loadData(false, true);
           }, err => {
             btn.disabled = false;
