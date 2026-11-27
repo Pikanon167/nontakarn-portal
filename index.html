@@ -935,11 +935,11 @@
       <!-- TAB 3: WORK & CALENDAR (Projects + Schedule Calendar) -->
       <section id="tab-work" class="hidden">
         <div class="sub-tabs" role="tablist" aria-label="หมวดงานและปฏิทิน">
-          <button type="button" class="sub-tab-btn active" data-sub="work:projects" onclick="switchSubTab('work','projects')">โปรเจกต์</button>
-          <button type="button" class="sub-tab-btn" data-sub="work:calendar" onclick="switchSubTab('work','calendar')">ปฏิทินตารางงาน</button>
+          <button type="button" class="sub-tab-btn active" data-sub="work:calendar" onclick="switchSubTab('work','calendar')">ปฏิทินตารางงาน</button>
+          <button type="button" class="sub-tab-btn" data-sub="work:projects" onclick="switchSubTab('work','projects')">โปรเจกต์</button>
         </div>
 
-        <div id="sub-work-projects">
+        <div id="sub-work-projects" class="hidden">
           <div class="section-head">
             <h1 class="section-title">สมุดโปรเจกต์ / งาน</h1>
             <button id="btnAddProject" type="button" class="btn btn-primary btn-sm hidden" onclick="openProjectModal()">+ สร้างโปรเจกต์</button>
@@ -962,7 +962,7 @@
           <div id="projectsList" class="doc-grid" style="grid-template-columns:1fr;"></div>
         </div>
 
-        <div id="sub-work-calendar" class="hidden">
+        <div id="sub-work-calendar">
           <div class="section-head">
             <h1 class="section-title">ปฏิทินตารางงาน</h1>
             <span class="section-meta">คลิกวันที่เพื่อดูหรือเพิ่มงาน</span>
@@ -1436,10 +1436,14 @@
           [gasFnName].apply(google.script.run, args || []);
         return;
       }
+      const rawArgs = Array.isArray(args) ? args : [];
+      const isPublic = action === "config" || action === "loginGoogle" || action === "loginCode";
+      const reqToken = isPublic ? "" : String(rawArgs[0] || SESSION_TOKEN || "");
+      const reqArgs = isPublic ? rawArgs : rawArgs.slice(1);
       fetch(PORTAL_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ _portalApi: true, action, token: SESSION_TOKEN, args: args || [] })
+        body: JSON.stringify({ _portalApi: true, action, token: reqToken, args: reqArgs })
       })
         .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
         .then(res => { if (onOk) onOk(res); })
@@ -1792,10 +1796,10 @@
     const SUB_MAP = {
       finance: ["bills", "issue", "verify"],
       docs: ["company", "other"],
-      work: ["projects", "calendar"]
+      work: ["calendar", "projects"]
     };
     let ACTIVE_TAB = "finance";
-    let ACTIVE_SUBS = { finance: "bills", docs: "company", work: "projects" };
+    let ACTIVE_SUBS = { finance: "bills", docs: "company", work: "calendar" };
 
     function saveNavState_() {
       const raw = JSON.stringify({ tab: ACTIVE_TAB, subs: ACTIVE_SUBS });
