@@ -9,22 +9,29 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #ecefe9;
+      --bg: #f3f5f4;
       --surface: #ffffff;
-      --surface-subtle: #e6ebe5;
-      --border: #dce2da;
-      --border-strong: #c8d0c6;
-      --text: #141917;
-      --ink: #141917;
-      --text-secondary: #3c4642;
-      --muted: #5d6863;
-      --ink-muted: #5d6863;
+      --surface-subtle: #f6f8f7;
+      --border: #e2e8e4;
+      --border-strong: #cbd5cf;
+      --text: #101815;
+      --ink: #101815;
+      --text-secondary: #33413c;
+      --muted: #5b6b64;
+      --ink-muted: #5b6b64;
       --primary: #0f3d34;
       --brand: #0f3d34;
       --primary-hover: #0a2c25;
       --primary-soft: #e7f2ee;
       --primary-border: #b8d9ce;
       --primary-ink: #0f3d34;
+      --sidebar-bg: #0c2b25;
+      --sidebar-bg-deep: #08201b;
+      --sidebar-hover: rgba(255, 255, 255, .08);
+      --sidebar-active: rgba(16, 185, 129, .18);
+      --sidebar-border: rgba(255, 255, 255, .10);
+      --sidebar-text: #dcebe6;
+      --sidebar-muted: #8fb0a5;
       --accent: #b45309;
       --accent-soft: #fef3c7;
       --ok: #146c43;
@@ -36,8 +43,8 @@
       --radius-sm: 9px;
       --radius: 14px;
       --radius-lg: 18px;
-      --shadow-sm: 0 1px 2px rgba(20, 25, 23, .04);
-      --shadow: 0 4px 14px rgba(20, 25, 23, .06), 0 1px 2px rgba(20, 25, 23, .04);
+      --shadow-sm: 0 1px 2px rgba(15, 30, 26, .05), 0 1px 1px rgba(15, 30, 26, .03);
+      --shadow: 0 6px 18px -4px rgba(15, 30, 26, .08), 0 2px 4px -1px rgba(15, 30, 26, .04);
       --shadow-lg: 0 18px 40px -10px rgba(15, 45, 39, .18);
       --ease: cubic-bezier(0.23, 1, 0.32, 1);
       --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -116,17 +123,48 @@
       font-size: 14px; display: flex; gap: 10px; align-items: flex-start; text-align: left;
     }
 
+    /* App Shell & Left Dark-Teal Sidebar */
+    .app-shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; }
+    .sidebar {
+      background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-deep) 100%);
+      color: var(--sidebar-text);
+      position: sticky; top: 0; height: 100vh;
+      display: flex; flex-direction: column; padding: 18px 14px;
+      border-right: 1px solid rgba(0, 0, 0, .15); z-index: 35;
+    }
+    .sidebar .brand-mark {
+      background: rgba(16, 185, 129, .2); border: 1px solid rgba(52, 211, 153, .35);
+      color: #ecfdf5; box-shadow: none;
+    }
+    .sidebar .brand-title { color: #ffffff; }
+    .sidebar .brand-sub { color: var(--sidebar-muted); }
+    .sidebar-section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--sidebar-muted); padding: 0 12px; margin: 22px 0 8px;
+    }
+    .sidebar-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .sidebar-foot {
+      margin-top: auto; padding: 12px 12px 2px; border-top: 1px solid var(--sidebar-border);
+      font-size: 11.5px; color: var(--sidebar-muted);
+    }
+    .app-main { min-width: 0; display: flex; flex-direction: column; }
+
     /* Sticky Topbar */
     .topbar {
-      background: rgba(255, 255, 255, .92);
+      background: rgba(255, 255, 255, .90);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       position: sticky; top: 0; z-index: 30;
     }
     .topbar-inner {
-      max-width: 1220px; margin: 0 auto; padding: 12px 20px;
+      max-width: 1220px; margin: 0 auto; padding: 11px 20px;
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .topbar .mobile-brand { display: none; }
+    .topbar-page-title {
+      font-family: 'Plus Jakarta Sans', 'IBM Plex Sans Thai', sans-serif;
+      font-size: 17px; font-weight: 800; letter-spacing: -0.02em; color: var(--text);
     }
     .header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .user-chip {
@@ -139,37 +177,35 @@
       background: var(--primary-soft); color: var(--primary-ink); border: 1px solid var(--primary-border);
     }
 
-    /* Desktop Tabs */
-    .desktop-tabs {
-      max-width: 1220px; margin: 0 auto; padding: 0 20px;
-      display: flex; gap: 4px; border-top: 1px solid var(--surface-subtle); overflow-x: auto;
-      scrollbar-width: none;
-    }
-    .desktop-tabs::-webkit-scrollbar { display: none; }
+    /* Sidebar Navigation Buttons & Segmented Sub-Tabs */
     .tab-btn {
-      display: inline-flex; align-items: center; gap: 8px;
-      min-height: 44px; padding: 10px 14px; background: none; border: none; border-bottom: 2px solid transparent;
-      font-family: inherit; font-size: 14px; font-weight: 600; color: var(--muted);
-      cursor: pointer; white-space: nowrap;
-      transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 120ms var(--ease-out);
+      display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%;
+      min-height: 42px; padding: 9px 12px; background: transparent; border: none; border-left: 3px solid transparent;
+      border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--sidebar-text);
+      cursor: pointer; white-space: nowrap; text-align: left;
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 120ms var(--ease-out);
     }
-    .tab-btn:hover { color: var(--text); }
+    .tab-btn:hover { background: var(--sidebar-hover); color: #ffffff; }
     .tab-btn:active { transform: scale(0.98); }
-    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-btn.active {
+      background: var(--sidebar-active); color: #ffffff; border-left-color: #34d399;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+    }
+    .tab-btn .nav-badge { margin-left: auto; }
     .sub-tabs {
-      display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto;
-      padding-bottom: 2px; scrollbar-width: none;
+      display: inline-flex; flex-wrap: nowrap; max-width: 100%; gap: 4px; margin-bottom: 16px; overflow-x: auto;
+      background: #e8eeea; padding: 4px; border-radius: 12px; scrollbar-width: none;
     }
     .sub-tabs::-webkit-scrollbar { display: none; }
     .sub-tab-btn {
       display: inline-flex; align-items: center; gap: 6px;
-      min-height: 40px; padding: 8px 14px; border-radius: 99px;
-      border: 1px solid var(--border); background: var(--surface);
-      font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted);
+      min-height: 36px; padding: 7px 14px; border-radius: 9px;
+      border: none; background: transparent;
+      font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-secondary);
       cursor: pointer; white-space: nowrap;
-      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
     }
-    .sub-tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .sub-tab-btn.active { background: var(--surface); color: var(--primary); box-shadow: 0 1px 3px rgba(15, 30, 26, .12); }
     .copy-btn {
       display: inline-flex; align-items: center; gap: 3px;
       padding: 2px 7px; border-radius: 6px; border: 1px solid var(--border);
@@ -411,9 +447,9 @@
     }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { padding: 13px 16px; text-align: left; border-bottom: 1px solid var(--surface-subtle); vertical-align: middle; }
-    th { background: #faf8f4; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+    th { background: #f6f8f7; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
     tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: #faf9f5; }
+    tbody tr:hover td { background: #f2f7f5; }
     .amt { font-weight: 700; font-size: 14.5px; white-space: nowrap; text-align: right; color: var(--text); }
     th.amt-col { text-align: right; }
     .vendor-name { font-weight: 600; color: var(--text); font-size: 14.5px; line-height: 1.35; word-break: break-word; }
@@ -478,6 +514,10 @@
     .cal-cell:hover { border-color: var(--primary); background: var(--primary-soft); }
     .cal-cell.other { background: var(--surface-subtle); color: var(--muted); }
     .cal-cell.today { border: 2px solid var(--primary); }
+    .cal-cell.today .cal-num {
+      display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center;
+      border-radius: 999px; background: var(--primary); color: #ffffff;
+    }
     .cal-cell.selected { background: var(--primary-soft); border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
     .cal-num { font-size: 12.5px; font-weight: 700; margin-bottom: 4px; }
     .cal-ev {
@@ -526,14 +566,21 @@
       .cal-layout { grid-template-columns: 1fr; }
     }
 
+    @media (max-width: 1023px) {
+      .app-shell { display: block; }
+      .sidebar { display: none; }
+      .topbar .mobile-brand { display: flex; }
+      #topbarPageTitle { display: none; }
+      .bottom-nav { display: flex; }
+      body { padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+    }
+
     @media (max-width: 767px) {
-      body { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
       .container { padding: 14px 12px 26px; }
       .topbar-inner { padding: 10px 12px; gap: 8px; }
       .brand-sub { display: none; }
       .user-chip { display: none; }
-      .desktop-tabs { display: none; }
-      .bottom-nav { display: flex; }
+      .pulse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
       .doc-grid { grid-template-columns: 1fr; }
       .filter-row-controls { grid-template-columns: 1fr; }
       .filter-drawer { grid-template-columns: 1fr; }
@@ -593,6 +640,52 @@
     .prj-card-product_only { border-left: 4px solid #2563eb; }
     .prj-card-procurement { border-left: 4px solid #d97706; }
     .cal-ev.prj-ev { font-weight: 700; border: 1px solid transparent; }
+
+    /* Today Pulse Strip */
+    .pulse-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .pulse-card {
+      text-align: left; font-family: inherit;
+      background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--border-strong);
+      border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow-sm); cursor: pointer;
+      display: flex; flex-direction: column; gap: 3px; min-width: 0;
+      transition: transform 150ms var(--ease-out), box-shadow 150ms var(--ease-out), border-color 150ms var(--ease-out);
+    }
+    .pulse-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .pulse-card:active { transform: scale(0.98); }
+    .pulse-teal { border-top-color: #0d9488; }
+    .pulse-blue { border-top-color: #2563eb; }
+    .pulse-amber { border-top-color: #d97706; }
+    .pulse-emerald { border-top-color: #059669; }
+    .pulse-rose { border-top-color: #e11d48; }
+    .pulse-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .pulse-val { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; line-height: 1.2; }
+    .pulse-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Sticky Calendar Panel & Project Visual Upgrades */
+    @media (min-width: 961px) {
+      .cal-box.cal-day-sticky { position: sticky; top: 72px; }
+    }
+    .prj-progress-track { height: 6px; border-radius: 999px; background: #e6ece8; overflow: hidden; }
+    .prj-progress-fill {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, #0d9488, #10b981);
+      transition: width 260ms var(--ease-out);
+    }
+    .prj-date-pill {
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+      font-size: 11.5px; font-weight: 600; background: #eef6f4; color: #0f5147; border: 1px solid #cce3dc;
+    }
+
+    /* Slide-over Drawer for Project Detail on Desktop */
+    @keyframes drawerSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    @media (min-width: 960px) {
+      #projectDetailModal.confirm-backdrop { justify-content: flex-end; align-items: stretch; padding: 0; }
+      #projectDetailModal .confirm-card {
+        max-width: 660px; width: 100%; height: 100vh; max-height: 100vh;
+        border-radius: 18px 0 0 18px; border-right: none;
+        animation: drawerSlideIn 220ms var(--ease-drawer);
+      }
+    }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -654,59 +747,73 @@
 
   <!-- MAIN PORTAL -->
   <div id="appView" class="hidden">
-    <header class="topbar">
-      <div class="topbar-inner">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="เมนูหลัก">
         <div class="brand">
           <div class="brand-mark">NK</div>
           <div>
             <div class="brand-title">Nontakarn Portal</div>
-            <div class="brand-sub">Document Vault &amp; Work Calendar</div>
+            <div class="brand-sub">Operations Hub</div>
           </div>
         </div>
-        <div class="header-actions">
-          <div class="user-chip">
-            <span id="uiUserName">-</span>
-            <span id="uiUserRole" class="role-badge">-</span>
+        <div class="sidebar-section-label">Workspace</div>
+        <nav class="sidebar-nav">
+          <button class="tab-btn active" data-tab="finance" onclick="switchTab('finance')">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17V7"/></svg>
+            <span>การเงิน</span>
+            <span id="verifyCountBadge" class="nav-badge hidden">0</span>
+          </button>
+          <button class="tab-btn" data-tab="docs" onclick="switchTab('docs')">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span>เอกสาร</span>
+          </button>
+          <button class="tab-btn" data-tab="work" onclick="switchTab('work')">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+            <span>งาน &amp; ปฏิทิน</span>
+          </button>
+          <button class="tab-btn" data-tab="inventory" onclick="switchTab('inventory')">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <span>คลังสินค้า</span>
+          </button>
+          <button class="tab-btn" data-tab="counterparties" onclick="switchTab('counterparties')">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>คู่ค้า</span>
+          </button>
+        </nav>
+        <div class="sidebar-foot">Nontakarn Operations · v2</div>
+      </aside>
+
+      <div class="app-main">
+        <header class="topbar">
+          <div class="topbar-inner">
+            <div class="brand mobile-brand">
+              <div class="brand-mark">NK</div>
+              <div>
+                <div class="brand-title">Nontakarn Portal</div>
+                <div class="brand-sub">Document Vault &amp; Work Calendar</div>
+              </div>
+            </div>
+            <div id="topbarPageTitle" class="topbar-page-title">การเงิน &amp; บิล</div>
+            <div class="header-actions">
+              <div class="user-chip">
+                <span id="uiUserName">-</span>
+                <span id="uiUserRole" class="role-badge">-</span>
+              </div>
+              <button id="eraToggleBtn" class="btn btn-outline btn-sm" onclick="toggleYearEra()" title="สลับแสดงปี ค.ศ. / พ.ศ.">ค.ศ.</button>
+              <button id="btnRefresh" class="btn btn-outline btn-sm" onclick="loadData(true)" aria-label="รีเฟรชข้อมูล">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
+                <span>รีเฟรช</span>
+              </button>
+              <button class="btn btn-ghost btn-icon" onclick="logout()" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </button>
+            </div>
           </div>
-          <button id="eraToggleBtn" class="btn btn-outline btn-sm" onclick="toggleYearEra()" title="สลับแสดงปี ค.ศ. / พ.ศ.">ค.ศ.</button>
-          <button id="btnRefresh" class="btn btn-outline btn-sm" onclick="loadData(true)" aria-label="รีเฟรชข้อมูล">
-            <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
-            <span>รีเฟรช</span>
-          </button>
-          <button class="btn btn-ghost btn-icon" onclick="logout()" title="ออกจากระบบ" aria-label="ออกจากระบบ">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
-        </div>
-      </div>
+        </header>
 
-      <!-- Desktop Navigation (5 Consolidated Tabs) -->
-      <nav class="desktop-tabs" aria-label="เมนูหลัก">
-        <button class="tab-btn active" data-tab="finance" onclick="switchTab('finance')">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17V7"/></svg>
-          <span>การเงิน</span>
-          <span id="verifyCountBadge" class="nav-badge hidden">0</span>
-        </button>
-        <button class="tab-btn" data-tab="docs" onclick="switchTab('docs')">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-          <span>เอกสาร</span>
-        </button>
-        <button class="tab-btn" data-tab="work" onclick="switchTab('work')">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-          <span>งาน &amp; ปฏิทิน</span>
-        </button>
-        <button class="tab-btn" data-tab="inventory" onclick="switchTab('inventory')">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          <span>คลังสินค้า</span>
-        </button>
-        <button class="tab-btn" data-tab="counterparties" onclick="switchTab('counterparties')">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span>คู่ค้า</span>
-        </button>
-      </nav>
-    </header>
-
-    <main class="container">
-      <!-- TAB 1: FINANCE HUB (Bills + Issue PDF + Admin Verify) -->
+        <main class="container">
+          <div id="todayPulseBar" class="pulse-grid" aria-label="ภาพรวมวันนี้"></div>
+          <!-- TAB 1: FINANCE HUB (Bills + Issue PDF + Admin Verify) -->
       <section id="tab-finance">
         <div class="sub-tabs" role="tablist" aria-label="หมวดการเงิน">
           <button type="button" class="sub-tab-btn active" data-sub="finance:bills" onclick="switchSubTab('finance','bills')">บิลรับ-จ่าย</button>
@@ -1015,7 +1122,7 @@
               <div class="cal-grid" id="calGrid"></div>
             </div>
 
-            <div class="cal-box">
+            <div class="cal-box cal-day-sticky">
               <h3 id="dayPanelTitle" style="font-size:16px;margin-bottom:12px;">เลือกวันที่บนปฏิทิน</h3>
               <div id="dayEvents"></div>
               <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
@@ -1095,7 +1202,9 @@
         </div>
         <div id="counterpartiesList" style="display:grid;gap:10px;"></div>
       </section>
-    </main>
+        </main>
+      </div>
+    </div>
 
     <!-- Mobile Bottom Navigation (5 Consolidated Core Tabs) -->
     <nav class="bottom-nav" aria-label="เมนูมือถือ">
@@ -1826,6 +1935,7 @@
           renderCounterparties();
           renderOtherDocs();
           renderCalendar();
+          renderTodayPulse();
           if (isAdmin) renderVerify();
           restoreNavState_();
           if (isManual) toast("อัปเดตข้อมูลล่าสุดแล้ว");
@@ -1891,6 +2001,77 @@
       if (!skipSave) saveNavState_();
     }
 
+    const TAB_PAGE_TITLES = {
+      finance: "การเงิน & บิล",
+      docs: "คลังเอกสาร",
+      work: "งาน & ปฏิทิน",
+      inventory: "คลังสินค้า",
+      counterparties: "คู่ค้า & สาขา"
+    };
+
+    function renderTodayPulse() {
+      const box = document.getElementById("todayPulseBar");
+      if (!box || !STATE) return;
+      const todayIso = formatYMD(new Date());
+      const curYM = todayIso.slice(0, 7);
+      const isAdmin = STATE.user && String(STATE.user.role || "").toLowerCase() === "admin";
+
+      const schedToday = (STATE.schedules || []).filter(s => s.date === todayIso && s.status !== "ยกเลิก").length;
+      const prjToday = (STATE.projects || []).filter(p => {
+        if (p.status === "Cancelled") return false;
+        const wf = p.workflow || {};
+        if (wf.appointDate === todayIso) return true;
+        if (wf.workStart) {
+          const endStr = wf.workEnd && wf.workEnd >= wf.workStart ? wf.workEnd : wf.workStart;
+          return todayIso >= wf.workStart && todayIso <= endStr;
+        }
+        return false;
+      }).length;
+      const todayJobs = schedToday + prjToday;
+
+      const activePrjs = (STATE.projects || []).filter(p => p.status === "Active");
+      const needNextCount = activePrjs.filter(p => computeProjectPipeline(p).nextStep).length;
+
+      const pendingVerify = (STATE.logs || []).filter(l => {
+        const st = l.verifyStatus || "Pending Review";
+        return st === "Pending Review" || st === "Needs Fix";
+      }).length;
+
+      let inc = 0, exp = 0;
+      getFinanceLogs().forEach(l => {
+        if (String(l.countCashflow || "Yes") === "No") return;
+        const ym = String(l.docDate || String(l.date || "").slice(0, 10)).slice(0, 7);
+        if (ym !== curYM) return;
+        const a = parseFloat(l.amt) || 0;
+        if (l.flow === "รายรับ") inc += a;
+        else exp += a;
+      });
+      const net = inc - exp;
+
+      box.innerHTML = `
+        <button type="button" class="pulse-card pulse-teal" onclick="switchTab('work');switchSubTab('work','calendar');goToday();">
+          <span class="pulse-label">งานวันนี้</span>
+          <span class="pulse-val num">${todayJobs}</span>
+          <span class="pulse-sub">ตาราง ${schedToday} · โปรเจกต์ ${prjToday}</span>
+        </button>
+        <button type="button" class="pulse-card pulse-blue" onclick="switchTab('work');switchSubTab('work','projects');">
+          <span class="pulse-label">Active Projects</span>
+          <span class="pulse-val num">${activePrjs.length}</span>
+          <span class="pulse-sub">รอออกเอกสารถัดไป ${needNextCount} งาน</span>
+        </button>
+        <button type="button" class="pulse-card ${pendingVerify > 0 ? "pulse-amber" : "pulse-emerald"}" onclick="switchTab('finance');switchSubTab('finance','${isAdmin ? "verify" : "bills"}');">
+          <span class="pulse-label">Pending Verify</span>
+          <span class="pulse-val num">${pendingVerify}</span>
+          <span class="pulse-sub">${pendingVerify > 0 ? "รอตรวจ / ต้องแก้ไข" : "ตรวจครบแล้ว"}</span>
+        </button>
+        <button type="button" class="pulse-card ${net >= 0 ? "pulse-emerald" : "pulse-rose"}" onclick="switchTab('finance');switchSubTab('finance','bills');">
+          <span class="pulse-label">สุทธิเดือนนี้ (฿)</span>
+          <span class="pulse-val num ${net >= 0 ? "amt-in" : "amt-out"}">${net >= 0 ? "+" : "-"}${fmtNum(Math.abs(net))}</span>
+          <span class="pulse-sub">รับ +${fmtNum(inc)} · จ่าย -${fmtNum(exp)}</span>
+        </button>
+      `;
+    }
+
     function switchTab(name, skipSave = false) {
       ACTIVE_TAB = name;
       ["finance", "docs", "work", "inventory", "counterparties"].forEach(t => {
@@ -1900,6 +2081,8 @@
       document.querySelectorAll(".tab-btn, .bottom-nav-btn").forEach(b => {
         b.classList.toggle("active", b.dataset.tab === name);
       });
+      const pt = document.getElementById("topbarPageTitle");
+      if (pt) pt.textContent = TAB_PAGE_TITLES[name] || "Nontakarn Portal";
       if (!skipSave) saveNavState_();
       window.scrollTo({ top: 0, behavior: "instant" });
     }
@@ -2951,9 +3134,10 @@
         const tplSpec = PROJECT_TEMPLATES[pipe.wf.template] || PROJECT_TEMPLATES.standard;
         const canDelete = isTeam && pipe.issued.length === 0 && pipe.logs.length === 0 && pipe.serials.length === 0;
         const schedChips = [
-          pipe.wf.appointDate ? `<span>นัด: <strong class="num">${esc(fmtDispDate(pipe.wf.appointDate))}</strong></span>` : "",
-          pipe.wf.workStart ? `<span>ทำงาน: <strong class="num">${esc(fmtDispDate(pipe.wf.workStart))}${pipe.wf.workEnd && pipe.wf.workEnd !== pipe.wf.workStart ? " – " + esc(fmtDispDate(pipe.wf.workEnd)) : ""}</strong></span>` : ""
-        ].filter(Boolean).join(" · ");
+          pipe.wf.appointDate ? `<span class="prj-date-pill">นัด: <strong class="num">${esc(fmtDispDate(pipe.wf.appointDate))}</strong></span>` : "",
+          pipe.wf.workStart ? `<span class="prj-date-pill">ทำงาน: <strong class="num">${esc(fmtDispDate(pipe.wf.workStart))}${pipe.wf.workEnd && pipe.wf.workEnd !== pipe.wf.workStart ? " – " + esc(fmtDispDate(pipe.wf.workEnd)) : ""}</strong></span>` : ""
+        ].filter(Boolean).join("");
+        const pct = pipe.activeCount ? Math.round((pipe.doneCount / pipe.activeCount) * 100) : 100;
         return `
           <article class="panel ${prjStripe}" style="display:grid;gap:10px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
@@ -2964,15 +3148,16 @@
                   <span class="tag tpl-${esc(pipe.wf.template)}">${esc(tplSpec.badge)}</span>
                   <span style="font-size:12px;color:var(--ink-muted);" class="num">${esc(fmtDispDate(p.startDate))}</span>
                 </div>
-                <button type="button" onclick="openProjectDetail('${escJsAttr(p.projectId)}')" style="background:none;border:none;padding:2px 0;text-align:left;cursor:pointer;font-size:15.5px;font-weight:700;color:var(--ink);">${esc(p.title)}</button>
+                <button type="button" onclick="openProjectDetail('${escJsAttr(p.projectId)}')" style="background:none;border:none;padding:2px 0;text-align:left;cursor:pointer;font-size:16px;font-weight:700;color:var(--ink);">${esc(p.title)}</button>
                 <div style="font-size:12.5px;color:var(--ink-muted);">ลูกค้า: ${esc(p.customer || "-")}${p.note ? " · " + esc(p.note) : ""}</div>
-                ${schedChips ? `<div style="font-size:12px;color:var(--ink-muted);margin-top:2px;">${schedChips}</div>` : ""}
+                ${schedChips ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">${schedChips}</div>` : ""}
               </div>
               <div style="display:flex;gap:6px;align-items:center;">${statusSel}</div>
             </div>
+            <div class="prj-progress-track" aria-hidden="true"><div class="prj-progress-fill" style="width:${pct}%"></div></div>
             <div class="prj-mini-rail">${miniRail}</div>
             <div style="font-size:12px;color:var(--ink-muted);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-              <span>ความคืบหน้า: <strong class="num">${pipe.doneCount}/${pipe.activeCount}</strong> ขั้นตอน${pipe.nextStep ? ` · ถัดไป: <strong style="color:var(--brand);">${esc(pipe.nextStep.title)}</strong>` : " · <strong>ครบทุกขั้นตอนแล้ว</strong>"}</span>
+              <span>ความคืบหน้า: <strong class="num">${pipe.doneCount}/${pipe.activeCount}</strong> (${pct}%)${pipe.nextStep ? ` · ถัดไป: <strong style="color:var(--brand);">${esc(pipe.nextStep.title)}</strong>` : " · <strong>ครบทุกขั้นตอนแล้ว</strong>"}</span>
               ${pipe.whtExpected > 0 && !pipe.steps.find(x => x.key === "wht").isDone && !pipe.steps.find(x => x.key === "wht").isSkip ? `<span class="tag tag-wht">WHT Pending (${fmtNum(pipe.whtExpected)} ฿)</span>` : ""}
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding:10px;background:#f8fafc;border-radius:10px;border:1px solid var(--border);">
