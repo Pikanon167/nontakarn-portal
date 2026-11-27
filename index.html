@@ -687,6 +687,34 @@
       }
     }
 
+    /* Issue Doc Tax Guide & Smart Locks */
+    .tax-help-btn {
+      height: 28px; min-height: 28px; padding: 0 10px; border-radius: 999px;
+      border: 1.5px solid #d97706; background: #fffbeb; color: #b45309;
+      font-family: inherit; font-weight: 800; font-size: 12.5px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+      transition: background-color 140ms var(--ease-out), transform 110ms var(--ease-out);
+    }
+    .tax-help-btn:hover { background: #fef3c7; }
+    .tax-help-btn:active { transform: scale(0.96); }
+    .tax-help-dot {
+      width: 17px; height: 17px; border-radius: 999px; background: #d97706; color: #ffffff;
+      display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;
+    }
+    .doc-rule-banner {
+      padding: 9px 12px; border-radius: 10px; background: #eef6f4; border: 1px solid #b8d9ce;
+      color: #0f3d34; font-size: 12.5px; line-height: 1.45; display: flex; align-items: flex-start; gap: 8px;
+    }
+    .tax-guide-box {
+      padding: 12px 14px; border-radius: 12px; background: #fffbeb; border: 1px solid #fde68a;
+      color: #451a03; font-size: 12.5px; line-height: 1.55; display: grid; gap: 8px;
+    }
+    .lock-pill {
+      display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px;
+      font-size: 10.5px; font-weight: 700; background: #e2e8e4; color: #33413c;
+    }
+    select:disabled, input:disabled { background: #f1f5f3; color: #5b6b64; cursor: not-allowed; opacity: .88; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
@@ -1462,12 +1490,32 @@
   <!-- ISSUE DOCUMENT (PDF GENERATOR) MODAL -->
   <div id="issueDocModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('issueDocModal')">
     <div class="confirm-card" style="max-width:600px;max-height:92vh;overflow-y:auto;">
-      <div class="confirm-title">ออกเอกสารใหม่ (สร้าง PDF ลง Drive อัตโนมัติ)</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+        <div class="confirm-title" style="margin-bottom:0;">ออกเอกสารใหม่ (สร้าง PDF ลง Drive อัตโนมัติ)</div>
+        <button type="button" id="btnToggleTaxGuide" class="tax-help-btn" onclick="toggleIssueTaxGuide()" title="คู่มือ VAT / ส่วนลด / หัก ณ ที่จ่าย">
+          <span class="tax-help-dot">!</span>
+          <span>คู่มือภาษี</span>
+        </button>
+      </div>
+      <div id="idTaxGuideBox" class="tax-guide-box hidden" style="margin-bottom:10px;">
+        <div><strong>1. สูตรคำนวณอัตโนมัติ:</strong> <span class="num">(ยอดรวม − ส่วนลด) + VAT 7% = ยอดรวมทั้งสิ้น</span> · ส่วน <strong>หัก ณ ที่จ่าย (WHT)</strong> คิดจาก <strong>ยอดหลังหักส่วนลด (ก่อน VAT)</strong> เสมอ</div>
+        <div><strong>2. เอกสารแต่ละใบใส่อะไรได้บ้าง (ระบบล็อกให้กันพลาดแล้ว):</strong>
+          <ul style="margin:4px 0 0 18px;display:grid;gap:2px;">
+            <li><strong>QT (ใบเสนอราคา):</strong> ใส่ส่วนลด + VAT ได้ · <em>ล็อก WHT = 0%</em> (ยังไม่หักในขั้นเสนอราคา)</li>
+            <li><strong>PO (ใบสั่งซื้อ):</strong> ใส่ส่วนลด + เลือก VAT 7% หรือ 0% ตามร้าน · <em>ล็อก WHT = 0%</em> (ไปหัก 50 ทวิ ตอนโอนจ่ายจริง)</li>
+            <li><strong>IV (ใบแจ้งหนี้/วางบิล):</strong> เปิดครบทุกช่อง (ส่วนลด / VAT / WHT) เพื่อแจ้งยอดโอนสุทธิให้ลูกค้า</li>
+            <li><strong>TX (ใบกำกับภาษี/ใบเสร็จ):</strong> <em>ล็อก VAT = 7%</em> (ไม่มี VAT ให้เปลี่ยนเป็น RC) · เลือก WHT ได้</li>
+            <li><strong>RC (ใบเสร็จรับเงิน):</strong> <em>ล็อก VAT = 0%</em> (มี VAT 7% ให้เปลี่ยนเป็น TX) · เลือก WHT ได้</li>
+          </ul>
+        </div>
+        <div><strong>3. อัตราหัก ณ ที่จ่าย (WHT):</strong> <strong>0%</strong> ซื้อขายสินค้า (ไม่หัก) · <strong>1%</strong> ขนส่ง · <strong>2%</strong> โฆษณา · <strong>3%</strong> บริการ/ติดตั้ง/จ้างทำของ/วิทยากร · <strong>5%</strong> ค่าเช่า</div>
+        <div><strong>4. ส่วนลด (Discount):</strong> ใส่เป็นจำนวนเงิน (บาท) ก่อนคิด VAT และ WHT (ถ้าไม่มีใส่ <strong>0</strong>)</div>
+      </div>
       <div style="display:grid;gap:10px;margin:12px 0 16px;">
         <div class="modal-grid-2">
           <div class="field">
             <label for="idType">ประเภทเอกสาร (รหัสมาตรฐาน)</label>
-            <select id="idType">
+            <select id="idType" onchange="applyIssueDocRules()">
               <option value="QT">QT • ใบเสนอราคา</option>
               <option value="PO">PO • ใบสั่งซื้อ</option>
               <option value="IV">IV • ใบแจ้งหนี้ / วางบิล</option>
@@ -1477,6 +1525,7 @@
           </div>
           <div class="field"><label for="idCo">ออกในนามบริษัท</label><select id="idCo" onchange="refreshIssueProjectAndProd()"></select></div>
         </div>
+        <div id="idRuleBanner" class="doc-rule-banner"></div>
         <div class="modal-grid-3">
           <div class="field"><label for="idDate">วันที่เอกสาร</label><input id="idDate" type="date"></div>
           <div class="field"><label for="idDue">ครบกำหนด (ไม่บังคับ)</label><input id="idDue" type="date"></div>
@@ -1505,8 +1554,8 @@
 
         <div class="modal-grid-3" style="border-top:1px solid var(--border);padding-top:10px;">
           <div class="field"><label for="idDiscount">ส่วนลดรวม (บาท)</label><input id="idDiscount" type="number" step="0.01" min="0" value="0" oninput="recalcIssueTotals()"></div>
-          <div class="field"><label for="idVat">VAT (%)</label><select id="idVat" onchange="recalcIssueTotals()"><option value="7">7% (VAT)</option><option value="0">0% (ไม่มี VAT)</option></select></div>
-          <div class="field"><label for="idWht">หัก ณ ที่จ่าย (WHT)</label><select id="idWht" onchange="recalcIssueTotals()"><option value="0">ไม่หัก (0%)</option><option value="1">1% (ขนส่ง)</option><option value="3">3% (บริการ/วิทยากร)</option><option value="5">5% (ค่าเช่า)</option></select></div>
+          <div class="field"><label for="idVat">VAT (%) <span id="idVatLock" class="lock-pill hidden"></span></label><select id="idVat" onchange="recalcIssueTotals()"><option value="7">7% (VAT)</option><option value="0">0% (ไม่มี VAT)</option></select></div>
+          <div class="field"><label for="idWht">หัก ณ ที่จ่าย (WHT) <span id="idWhtLock" class="lock-pill hidden"></span></label><select id="idWht" onchange="recalcIssueTotals()"><option value="0">ไม่หัก 0% (ขายสินค้า)</option><option value="1">1% (ค่าขนส่ง)</option><option value="2">2% (ค่าโฆษณา)</option><option value="3">3% (บริการ/ติดตั้ง/จ้างทำของ)</option><option value="5">5% (ค่าเช่า)</option></select></div>
         </div>
         <div id="idTotalPreview" style="padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;font-size:13px;display:grid;gap:4px;"></div>
         <div class="field"><label for="idNote">หมายเหตุ</label><input id="idNote" type="text"></div>
@@ -3757,6 +3806,66 @@
       }).join("");
     }
 
+    const ISSUE_DOC_RULES = {
+      QT: {
+        vatLock: false, vatDefault: 7, whtLock: true,
+        banner: "ใบเสนอราคา (QT): ใส่ส่วนลดและเลือก VAT 7% ตามปกติ · ล็อก WHT = 0% (ยังไม่หัก ณ ที่จ่ายในขั้นเสนอราคา)"
+      },
+      PO: {
+        vatLock: false, vatDefault: 7, whtLock: true,
+        banner: "ใบสั่งซื้อ (PO): เลือก VAT ตามผู้ขาย (7% จด VAT / 0% บุคคลธรรมดา) · ล็อก WHT = 0% (หัก 50 ทวิ ตอนจ่ายเงินจริง ไม่ใช่ในใบ PO)"
+      },
+      IV: {
+        vatLock: false, vatDefault: 7, whtLock: false,
+        banner: "ใบแจ้งหนี้/วางบิล (IV): เลือก VAT ตามงาน · งานบริการ/ติดตั้งเลือก WHT 3% เพื่อให้ลูกค้าเห็นยอดโอนสุทธิ (ขายสินค้าอย่างเดียว = 0%)"
+      },
+      TX: {
+        vatLock: true, vatDefault: 7, whtLock: false,
+        banner: "ใบกำกับภาษี/ใบเสร็จ (TX): ล็อก VAT 7% อัตโนมัติ (ถ้าไม่มี VAT ให้เปลี่ยนเป็น RC) · เลือก WHT ตามประเภทงาน"
+      },
+      RC: {
+        vatLock: true, vatDefault: 0, whtLock: false,
+        banner: "ใบเสร็จรับเงิน (RC): ล็อก VAT 0% อัตโนมัติ (ถ้ามี VAT 7% ให้เปลี่ยนเป็น TX) · เลือก WHT ตามประเภทงาน"
+      }
+    };
+
+    function toggleIssueTaxGuide() {
+      const box = document.getElementById("idTaxGuideBox");
+      if (box) box.classList.toggle("hidden");
+    }
+
+    function applyIssueDocRules(preferredWht) {
+      const docType = document.getElementById("idType").value;
+      const rule = ISSUE_DOC_RULES[docType] || ISSUE_DOC_RULES.QT;
+      const vatEl = document.getElementById("idVat");
+      const whtEl = document.getElementById("idWht");
+      const vatLockEl = document.getElementById("idVatLock");
+      const whtLockEl = document.getElementById("idWhtLock");
+      const bannerEl = document.getElementById("idRuleBanner");
+
+      if (rule.vatLock) {
+        vatEl.value = String(rule.vatDefault);
+        vatEl.disabled = true;
+        if (vatLockEl) { vatLockEl.textContent = `ล็อก ${rule.vatDefault}%`; vatLockEl.classList.remove("hidden"); }
+      } else {
+        vatEl.disabled = false;
+        if (vatLockEl) vatLockEl.classList.add("hidden");
+      }
+
+      if (rule.whtLock) {
+        whtEl.value = "0";
+        whtEl.disabled = true;
+        if (whtLockEl) { whtLockEl.textContent = "ล็อก 0%"; whtLockEl.classList.remove("hidden"); }
+      } else {
+        whtEl.disabled = false;
+        if (whtLockEl) whtLockEl.classList.add("hidden");
+        if (preferredWht != null) whtEl.value = String(preferredWht);
+      }
+
+      if (bannerEl) bannerEl.textContent = rule.banner;
+      recalcIssueTotals();
+    }
+
     function openIssueDocModal(preset) {
       const p = preset || {};
       const list = (STATE.companies && STATE.companies.length) ? STATE.companies : [{ id: "Nontakarn" }, { id: "TIM Connection" }];
@@ -3771,6 +3880,8 @@
       document.getElementById("idDiscount").value = "0";
       document.getElementById("idVat").value = "7";
       document.getElementById("idWht").value = String(p.whtRate != null ? p.whtRate : 0);
+      const tg = document.getElementById("idTaxGuideBox");
+      if (tg) tg.classList.add("hidden");
       refreshIssueProjectAndProd();
       if (p.projectId) document.getElementById("idPrj").value = p.projectId;
       if (p.customer) {
@@ -3785,6 +3896,7 @@
       }
       ISSUE_ITEMS = [{ itemType: "Service", productNumber: "", description: "", qty: 1, unit: "งาน", unitPrice: 0 }];
       renderIssueItems();
+      applyIssueDocRules(p.whtRate != null ? p.whtRate : 0);
       document.getElementById("btnSaveIssueDoc").disabled = false;
       document.getElementById("issueDocModal").classList.remove("hidden");
     }
