@@ -653,6 +653,24 @@
     .prj-mini-dot { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-muted); }
     .prj-mini-dot.done { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
     .prj-mini-dot.next { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+
+    .unlinked-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--radius-md); background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 13px; margin-bottom: 10px; }
+    .inv-tree { display: grid; gap: 10px; }
+    .inv-tree-prod { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .inv-tree-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; transition: background 140ms; }
+    .inv-tree-head:hover { background: #f8fafc; }
+    .inv-chev { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px; background: #f1f5f9; color: var(--ink-muted); font-size: 11px; flex-shrink: 0; transition: transform 150ms; margin-top: 2px; }
+    .inv-chev.open { transform: rotate(90deg); background: #e0f2fe; color: #0369a1; }
+    .inv-tree-body { border-top: 1px solid var(--border); background: #f8fafc; padding: 10px 14px 12px; display: grid; gap: 8px; }
+    .inv-tree-lot { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .inv-tree-lot-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 12px; cursor: pointer; user-select: none; }
+    .inv-tree-lot-head:hover { background: #f8fafc; }
+    .inv-tree-serials { border-top: 1px dashed var(--border); padding: 8px 12px 10px 28px; display: grid; gap: 6px; background: #fcfcfd; }
+    .inv-tree-serial { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; }
+    @media (max-width: 720px) {
+      .inv-tree-head, .inv-tree-lot-head { flex-direction: column; }
+      .inv-tree-serials { padding-left: 12px; }
+    }
     .prj-mini-dot.skip { opacity: .48; text-decoration: line-through; }
     .prj-mini-line { width: 10px; height: 2px; background: var(--border); flex-shrink: 0; }
     .prj-mini-line.done { background: #10b981; }
@@ -961,6 +979,7 @@
             </div>
           </div>
         </div>
+        <div id="expUnlinkedBanner" class="unlinked-banner hidden"></div>
 
         <div class="table-wrap">
           <table>
@@ -1215,31 +1234,32 @@
           </div>
         </div>
         <div id="invGuideBox" class="tax-guide-box hidden" style="margin-bottom:10px;">
-          <div><strong>วิธีดูและใช้งานคลังสินค้าแบบเข้าใจง่าย:</strong></div>
+          <div><strong>วิธีดูและใช้งานคลังสินค้า (รหัส SKU + ดรอปดาวน์ 3 ชั้น):</strong></div>
           <ul style="margin:4px 0 0 18px;display:grid;gap:2px;">
-            <li><strong>1. รุ่นสินค้า (สต็อกรวม):</strong> รวมยอดคงเหลือและเลข Serial ของสินค้าแต่ละรุ่น (กด <em>แก้ไข</em> เพื่อปรับราคาขาย/โหมดติดตาม)</li>
-            <li><strong>2. ล็อตที่รับเข้า:</strong> แสดงรอบที่ซื้อเข้า (วันหมดอายุ, บิลที่อ้างอิง, เพิ่มเลข Serial ภายหลังได้ด้วยปุ่ม <em>+ ซีเรียล</em>)</li>
-            <li><strong>3. ส่งมอบให้ลูกค้า (OUT):</strong> กด <em>ส่งมอบ / คืน</em> หรือเลือกที่เครื่องแล้วกด <em>ส่งมอบเครื่องนี้</em> เพื่อตัดสต็อก, ผูกโปรเจกต์/ลูกค้า และบันทึกต้นทุน</li>
-            <li><strong>4. รับคืนเข้าคลัง (RETURN):</strong> ใช้เมื่อลูกค้าคืนเครื่องหรือยกเลิกการส่งมอบ ระบบจะคืนเครื่องกลับมาเป็น <em>อยู่ในคลัง</em> ให้อัตโนมัติ</li>
+            <li><strong>รหัส SKU มาตรฐาน:</strong> <code>NK-AED-001</code> / <code>TIM-MED-001</code> (บริษัท-หมวด-ลำดับ) กดปุ่ม <em>สร้างอัตโนมัติ</em> ได้ทันที</li>
+            <li><strong>ชั้น 1 รุ่นสินค้า → ชั้น 2 ล็อต &amp; วันหมดอายุ → ชั้น 3 เครื่อง (Serial):</strong> คลิกที่หัวข้อเพื่อเปิด/พับดูรายละเอียดต่อเนื่องในหน้าเดียว</li>
+            <li><strong>ขาย vs เช่า (OUT / RENT):</strong> กด <em>ขาย/ส่งมอบ</em> เพื่อตัดขายเข้าโปรเจกต์ หรือกด <em>ปล่อยเช่า</em> เพื่อติดตามเครื่องที่ลูกค้าเช่าอยู่ (ไม่ตัดเป็นต้นทุนขาย) แล้วกด <em>รับคืนจากเช่า</em> เมื่อได้เครื่องกลับ</li>
           </ul>
         </div>
         <div id="invKpiStrip" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:8px;margin-bottom:10px;"></div>
         <div class="filter-shell">
           <div class="filter-row" style="justify-content:space-between;flex-wrap:wrap;">
-            <div class="flow-seg" role="tablist" aria-label="มุมมองคลังสินค้า">
-              <button type="button" class="active" data-inv="products" onclick="setInvView('products')">รุ่นสินค้า (สต็อกรวม)</button>
-              <button type="button" data-inv="lots" onclick="setInvView('lots')">ล็อตที่รับเข้า</button>
-              <button type="button" data-inv="serials" onclick="setInvView('serials')">เครื่องแต่ละชิ้น (Serial)</button>
+            <div class="flow-seg" role="tablist" aria-label="ตัวกรองคลังสินค้า">
+              <button type="button" class="active" data-inv-filter="all" onclick="setInvFilter('all')">ทั้งหมด</button>
+              <button type="button" data-inv-filter="in_stock" onclick="setInvFilter('in_stock')">มีของในคลัง</button>
+              <button type="button" data-inv-filter="rented" onclick="setInvFilter('rented')">กำลังเช่า</button>
+              <button type="button" data-inv-filter="sold" onclick="setInvFilter('sold')">ขายแล้ว</button>
+              <button type="button" data-inv-filter="alerts" onclick="setInvFilter('alerts')">ใกล้หมด / หมดอายุ</button>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-              <button id="btnInvAlerts" type="button" class="btn btn-outline btn-sm" onclick="toggleInvAlerts()">เฉพาะใกล้หมด / ใกล้หมดอายุ</button>
+              <button id="btnInvExpandAll" type="button" class="btn btn-outline btn-sm" onclick="toggleAllInvExpand()">เปิดทั้งหมด</button>
               <select id="invCompany" style="width:auto;min-width:145px;font-weight:600;" onchange="renderInventory()"></select>
             </div>
           </div>
           <div class="filter-row">
             <div class="search-wrap">
               <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="invSearch" type="search" placeholder="ค้นหา Product Number, ชื่อสินค้า, เลข Lot, Serial Number..." oninput="debouncedRender('inv', renderInventory)">
+              <input id="invSearch" type="search" placeholder="ค้นหารหัส SKU, ชื่อสินค้า, เลข Lot, Serial, ลูกค้า, โปรเจกต์..." oninput="debouncedRender('inv', renderInventory)">
             </div>
           </div>
         </div>
@@ -1474,7 +1494,13 @@
       <div style="display:grid;gap:10px;margin:12px 0 18px;">
         <div class="modal-grid-2">
           <div class="field"><label for="npCo">บริษัท</label><select id="npCo"></select></div>
-          <div class="field"><label for="npSku">Product Number (SKU)</label><input id="npSku" type="text" placeholder="NK-MED-001"></div>
+          <div class="field">
+            <label for="npSku">รหัสสินค้า (SKU)</label>
+            <div style="display:flex;gap:4px;">
+              <input id="npSku" type="text" placeholder="NK-AED-001 (ว่าง=สร้างอัตโนมัติ)">
+              <button id="btnGenSku" type="button" class="btn btn-outline btn-sm" style="white-space:nowrap;" onclick="fillAutoSku()">อัตโนมัติ</button>
+            </div>
+          </div>
         </div>
         <div class="field"><label for="npName">ชื่อสินค้า</label><input id="npName" type="text" placeholder="ชื่อสินค้า/รุ่น"></div>
         <div class="modal-grid-3">
@@ -1482,9 +1508,10 @@
           <div class="field"><label for="npUnit">หน่วย</label><input id="npUnit" type="text" value="ชิ้น"></div>
           <div class="field"><label for="npMode">โหมดติดตาม</label><select id="npMode"><option value="Lot">Lot เท่านั้น</option><option value="Lot+Serial">Lot + Serial</option></select></div>
         </div>
-        <div class="modal-grid-3">
-          <div class="field"><label for="npCost">ต้นทุนมาตรฐาน</label><input id="npCost" type="number" step="0.01" placeholder="0"></div>
-          <div class="field"><label for="npPrice">ราคาขาย</label><input id="npPrice" type="number" step="0.01" placeholder="0"></div>
+        <div class="modal-grid-2">
+          <div class="field"><label for="npCost">ต้นทุนมาตรฐาน (฿)</label><input id="npCost" type="number" step="0.01" placeholder="0"></div>
+          <div class="field"><label for="npPrice">ราคาขาย (฿)</label><input id="npPrice" type="number" step="0.01" placeholder="0"></div>
+          <div class="field"><label for="npRentPrice">ราคาเช่า / เดือน (฿)</label><input id="npRentPrice" type="number" step="0.01" placeholder="0 (ถ้ามีบริการเช่า)"></div>
           <div class="field"><label for="npMin">เตือนสต็อกต่ำ</label><input id="npMin" type="number" value="5"></div>
         </div>
       </div>
@@ -1549,7 +1576,7 @@
       <div id="mvSub" style="font-size:12.5px;color:var(--ink-muted);margin-bottom:10px;"></div>
       <div style="display:grid;gap:10px;margin-bottom:18px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div class="field"><label for="mvType">ประเภท</label><select id="mvType" onchange="renderMoveSerialChoices()"><option value="OUT">ส่งมอบ / ขายให้ลูกค้า (ตัดสต็อกออก)</option><option value="RETURN">รับคืนเข้าคลัง (ลูกค้าคืนของ / ยกเลิกส่ง)</option></select></div>
+          <div class="field"><label for="mvType">ประเภท</label><select id="mvType" onchange="renderMoveSerialChoices()"><option value="OUT">ส่งมอบ / ขายให้ลูกค้า (ตัดสต็อกขาย)</option><option value="RENT">ปล่อยเช่าให้ลูกค้า (ตัดสต็อกชั่วคราว)</option><option value="RETURN">รับคืนเข้าคลัง (คืนจากขาย / คืนจากเช่า)</option></select></div>
           <div class="field" id="mvQtyWrap"><label for="mvQty">จำนวน</label><input id="mvQty" type="number" min="1" value="1"></div>
         </div>
         <div id="mvHint" style="font-size:12px;padding:8px 10px;border-radius:8px;background:#f8fafc;border:1px solid var(--border);color:var(--ink-muted);"></div>
@@ -1559,7 +1586,7 @@
         </div>
         <div id="mvOutMeta" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div class="field"><label for="mvProject">ผูกโปรเจกต์ (ไม่บังคับ)</label><select id="mvProject"></select></div>
-          <div class="field"><label for="mvWarranty">หมดประกัน (ไม่บังคับ)</label><input id="mvWarranty" type="date"></div>
+          <div class="field"><label id="mvWarrantyLabel" for="mvWarranty">หมดประกัน (ไม่บังคับ)</label><input id="mvWarranty" type="date"></div>
         </div>
         <div class="field" id="mvCustWrap"><label for="mvCust">ลูกค้า / ผู้รับ</label><input id="mvCust" type="text"></div>
         <div class="field"><label for="mvNote">หมายเหตุ</label><input id="mvNote" type="text"></div>
@@ -1706,8 +1733,11 @@
     };
     let SESSION_TOKEN = INITIAL_TOKEN || readTok();
     let STATE = { user: null, companyDocs: [], logs: [], schedules: [], projects: [], inventory: { products: [], lots: [], serials: [] }, issuedDocs: [] };
-    let ACTIVE_INV_VIEW = "products";
-    let INV_ALERTS_ONLY = false;
+    let ACTIVE_INV_FILTER = "all";
+    let INV_EXPANDED_PRODS = new Set();
+    let INV_EXPANDED_LOTS = new Set();
+    let INV_EXPAND_ALL = null;
+    let EXP_UNLINKED_ONLY = false;
     let MOVING_LOT = null;
     let ACTIVE_FIN_TYPE = "";
     let ACTIVE_OTHER_TYPE = "";
@@ -2498,7 +2528,7 @@
       const dtStr = item.docDate || String(item.date || "").slice(0, 10);
       document.getElementById("editDate").value = /^\d{4}-\d{2}-\d{2}$/.test(dtStr) ? dtStr : "";
       const prjSel = document.getElementById("editProject");
-      prjSel.innerHTML = `<option value="">— ไม่ผูกโปรเจกต์ —</option>` +
+      prjSel.innerHTML = `<option value="">— ไม่ผูกโปรเจกต์ —</option><option value="IGNORE">⊘ ไม่ต้องผูกโปรเจกต์ (Ignore — ปิดแจ้งเตือน)</option>` +
         (STATE.projects || []).map(p => `<option value="${esc(p.projectId)}">${esc(p.projectId)} · ${esc(p.title)}</option>`).join("");
       prjSel.value = item.projectId || "";
       document.getElementById("editFlow").value = item.flow === "รายรับ" ? "รายรับ" : "รายจ่าย";
@@ -2778,8 +2808,28 @@
       document.getElementById("expMonth").value = "";
       renderExpenses();
     }
+    function toggleExpUnlinkedOnly() {
+      EXP_UNLINKED_ONLY = !EXP_UNLINKED_ONLY;
+      renderExpenses();
+    }
+    function quickIgnoreLogProject(receiptId, rowNum) {
+      if (window._busyAction) return;
+      window._busyAction = true;
+      callApi("linkProjectDoc", "apiLinkProjectDoc", [SESSION_TOKEN, "log", receiptId, rowNum, "IGNORE"], res => {
+        window._busyAction = false;
+        if (!res || !res.ok) return handleApiError_(res, "อัปเดตไม่สำเร็จ");
+        const target = (STATE.logs || []).find(l => (receiptId && l.receiptId === receiptId) || (rowNum && Number(l.row) === Number(rowNum)));
+        if (target) target.projectId = "IGNORE";
+        toast("ตั้งค่า Ignore (ไม่ต้องผูกโปรเจกต์) แล้ว");
+        renderExpenses();
+        renderOtherDocs();
+        refreshBadgesAndPulse_();
+        syncPortalCache_();
+      }, err => { window._busyAction = false; toast(err.message); });
+    }
     function resetExpenseFilters() {
       ACTIVE_EXP_FLOW = "";
+      EXP_UNLINKED_ONLY = false;
       document.querySelectorAll(".flow-seg button").forEach(b => b.classList.toggle("active", b.dataset.flow === ""));
       ["expCompany", "expType", "expSearch", "expEmp"].forEach(id => document.getElementById(id).value = "");
       document.getElementById("expMonth").value = formatYMD(new Date()).slice(0, 7);
@@ -2797,7 +2847,17 @@
         if (ACTIVE_EXP_FLOW && String(l.flow || "รายจ่าย") !== ACTIVE_EXP_FLOW) return false;
         return true;
       });
-      const list = filterAndSortLogs(
+      const unlinkedCount = baseLogs.filter(l => !String(l.projectId || "").trim()).length;
+      const bannerEl = document.getElementById("expUnlinkedBanner");
+      if (bannerEl) {
+        if (unlinkedCount > 0 || EXP_UNLINKED_ONLY) {
+          bannerEl.classList.remove("hidden");
+          bannerEl.innerHTML = `<div><strong>⚠️ มี ${unlinkedCount} บิล/สลิป ที่ยังไม่ผูกโปรเจกต์</strong> <span style="opacity:.85;">กด "+ ผูกโปรเจกต์" หรือ "Ignore" ถ้าเป็นค่าใช้จ่ายทั่วไป</span></div><button type="button" class="btn ${EXP_UNLINKED_ONLY ? "btn-primary" : "btn-outline"} btn-sm" onclick="toggleExpUnlinkedOnly()">${EXP_UNLINKED_ONLY ? "แสดงทั้งหมด" : `ดูเฉพาะที่ยังไม่ผูก (${unlinkedCount})`}</button>`;
+        } else {
+          bannerEl.classList.add("hidden");
+        }
+      }
+      let list = filterAndSortLogs(
         baseLogs,
         document.getElementById("expSearch").value,
         document.getElementById("expType").value,
@@ -2805,6 +2865,9 @@
         curMonth,
         document.getElementById("expSort").value
       );
+      if (EXP_UNLINKED_ONLY) {
+        list = list.filter(l => !String(l.projectId || "").trim());
+      }
 
       LAST_FILTERED_EXP = list;
 
@@ -2859,9 +2922,17 @@
         const sign = isIn ? "+" : "-";
         const amtCls = isIn ? "amt-in" : "amt-out";
         const coBadge = !curCo ? ` <span class="co-pill ${companyPillClass(l.company)}">${esc(l.company || "Nontakarn")}</span>` : "";
-        const prjBadge = l.projectId ? ` <button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" title="${esc(prjTitleMap.get(l.projectId) || l.projectId)}" onclick="openProjectDetail('${escJsAttr(l.projectId)}')">${esc(l.projectId)}</button>` : "";
+        const prjId = String(l.projectId || "").trim();
+        const isIgn = prjId.toUpperCase() === "IGNORE";
+        const prjBadge = isIgn
+          ? ` <span class="co-pill" style="color:#64748b;background:#f1f5f9;">ไม่ผูก (Ignore)</span>`
+          : (prjId
+            ? ` <button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" title="${esc(prjTitleMap.get(prjId) || prjId)}" onclick="openProjectDetail('${escJsAttr(prjId)}')">${esc(prjId)}</button>`
+            : ` <span class="tag tag-wht">ยังไม่ผูกโปรเจกต์</span>`);
         const noCountBadge = l.countCashflow === "No" ? ` <span class="co-pill" style="color:#64748b;">ไม่นับยอด</span>` : "";
-        const linkBtn = isTeam ? ` <button type="button" class="flip-btn" title="${l.projectId ? "ย้ายหรือเอาออกจากโปรเจกต์" : "ผูกเข้าโปรเจกต์"}" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${l.row},'${escJsAttr(l.projectId || "")}')">${l.projectId ? "ย้ายโปรเจกต์" : "+ ผูกโปรเจกต์"}</button>` : "";
+        const linkBtn = isTeam
+          ? ` <button type="button" class="flip-btn" title="${prjId ? "ย้ายหรือเอาออกจากโปรเจกต์" : "ผูกเข้าโปรเจกต์"}" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${l.row},'${escJsAttr(prjId)}')">${isIgn ? "เปลี่ยนโปรเจกต์" : (prjId ? "ย้ายโปรเจกต์" : "+ ผูกโปรเจกต์")}</button>${!prjId ? ` <button type="button" class="flip-btn" title="ไม่ต้องผูกโปรเจกต์ (ปิดแจ้งเตือน)" onclick="quickIgnoreLogProject('${escJsAttr(l.receiptId)}',${l.row})">Ignore</button>` : ""}`
+          : "";
         const flipBtn = (isAdmin ? ` <button type="button" class="flip-btn" title="สลับรายรับ/รายจ่าย" onclick="flipFlow('${escJsAttr(l.receiptId)}', ${l.row}, '${escJsAttr(l.flow || "รายจ่าย")}')">${isIn ? "รับ⇄จ่าย" : "จ่าย⇄รับ"}</button> <button type="button" class="flip-btn" title="แก้ไขรายละเอียด/บริษัท" onclick="openEditLog(${l.row})">แก้ไข</button>` : "") + linkBtn;
         return `
           <tr title="${esc(l.sum)}">
@@ -2886,8 +2957,16 @@
         const sign = isIn ? "+" : "-";
         const amtCls = isIn ? "amt-in" : "amt-out";
         const coBadge = !curCo ? `<span class="co-pill ${companyPillClass(l.company)}">${esc(l.company || "Nontakarn")}</span>` : "";
-        const prjBadge = l.projectId ? `<button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" title="${esc(prjTitleMap.get(l.projectId) || l.projectId)}" onclick="openProjectDetail('${escJsAttr(l.projectId)}')">${esc(l.projectId)}</button>` : "";
-        const linkBtn = isTeam ? `<button type="button" class="flip-btn" title="${l.projectId ? "ย้ายหรือเอาออกจากโปรเจกต์" : "ผูกเข้าโปรเจกต์"}" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${l.row},'${escJsAttr(l.projectId || "")}')">${l.projectId ? "ย้ายโปรเจกต์" : "+ ผูกโปรเจกต์"}</button>` : "";
+        const prjId = String(l.projectId || "").trim();
+        const isIgn = prjId.toUpperCase() === "IGNORE";
+        const prjBadge = isIgn
+          ? `<span class="co-pill" style="color:#64748b;background:#f1f5f9;">ไม่ผูก (Ignore)</span>`
+          : (prjId
+            ? `<button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" title="${esc(prjTitleMap.get(prjId) || prjId)}" onclick="openProjectDetail('${escJsAttr(prjId)}')">${esc(prjId)}</button>`
+            : `<span class="tag tag-wht">ยังไม่ผูกโปรเจกต์</span>`);
+        const linkBtn = isTeam
+          ? `<button type="button" class="flip-btn" title="${prjId ? "ย้ายหรือเอาออกจากโปรเจกต์" : "ผูกเข้าโปรเจกต์"}" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${l.row},'${escJsAttr(prjId)}')">${isIgn ? "เปลี่ยนโปรเจกต์" : (prjId ? "ย้ายโปรเจกต์" : "+ ผูกโปรเจกต์")}</button>${!prjId ? `<button type="button" class="flip-btn" onclick="quickIgnoreLogProject('${escJsAttr(l.receiptId)}',${l.row})">Ignore</button>` : ""}`
+          : "";
         const flipBtn = (isAdmin ? `<button type="button" class="flip-btn" onclick="flipFlow('${escJsAttr(l.receiptId)}', ${l.row}, '${escJsAttr(l.flow || "รายจ่าย")}')">${isIn ? "รับ⇄จ่าย" : "จ่าย⇄รับ"}</button><button type="button" class="flip-btn" onclick="openEditLog(${l.row})">แก้ไข</button>` : "") + linkBtn;
         return `
           <article class="m-item ${isIn ? "m-item-in" : "m-item-out"}">
@@ -3776,7 +3855,10 @@
       document.getElementById("relinkDocDesc").textContent = "เลือกโปรเจกต์ใหม่ หรือเอาออกจากโปรเจกต์ (ไฟล์และข้อมูลบิลยังคงอยู่ครบ)";
       document.getElementById("relinkMoveWrap").classList.remove("hidden");
       document.getElementById("relinkAttachWrap").classList.add("hidden");
-      const opts = [`<option value="">— เอาออกจากโปรเจกต์ (ไม่ผูกโปรเจกต์) —</option>`].concat(
+      const opts = [
+        `<option value="">— เอาออกจากโปรเจกต์ (ไม่ผูกโปรเจกต์) —</option>`,
+        ...(kind === "log" ? [`<option value="IGNORE" ${String(currentProjectId).toUpperCase() === "IGNORE" ? "selected" : ""}>⊘ ไม่ต้องผูกโปรเจกต์ (Ignore — ปิดแจ้งเตือน)</option>`] : [])
+      ].concat(
         (STATE.projects || []).map(pr =>
           `<option value="${esc(pr.projectId)}" ${pr.projectId === currentProjectId ? "selected" : ""}>${esc(pr.projectId)} · ${esc(pr.title)}</option>`
         )
@@ -3922,31 +4004,69 @@
         }, err => { window._busyAction = false; toast(err.message); });
     }
 
-    function toggleInvAlerts() {
-      INV_ALERTS_ONLY = !INV_ALERTS_ONLY;
-      const btn = document.getElementById("btnInvAlerts");
-      if (btn) {
-        btn.classList.toggle("btn-primary", INV_ALERTS_ONLY);
-        btn.classList.toggle("btn-outline", !INV_ALERTS_ONLY);
-      }
+    function setInvFilter(filter) {
+      ACTIVE_INV_FILTER = filter || "all";
+      document.querySelectorAll("[data-inv-filter]").forEach(b => b.classList.toggle("active", b.dataset.invFilter === ACTIVE_INV_FILTER));
       renderInventory();
     }
 
     function setInvView(view) {
-      ACTIVE_INV_VIEW = view;
-      document.querySelectorAll("[data-inv]").forEach(b => b.classList.toggle("active", b.dataset.inv === view));
+      setInvFilter(view === "lots" ? "alerts" : "all");
+    }
+
+    function toggleInvProd(key) {
+      INV_EXPAND_ALL = null;
+      if (INV_EXPANDED_PRODS.has(key)) INV_EXPANDED_PRODS.delete(key);
+      else INV_EXPANDED_PRODS.add(key);
       renderInventory();
     }
 
-    function jumpToLotMove(sku) {
-      document.getElementById("invSearch").value = sku || "";
-      setInvView("lots");
+    function toggleInvLot(lotId) {
+      INV_EXPAND_ALL = null;
+      if (INV_EXPANDED_LOTS.has(lotId)) INV_EXPANDED_LOTS.delete(lotId);
+      else INV_EXPANDED_LOTS.add(lotId);
+      renderInventory();
+    }
+
+    function toggleAllInvExpand() {
+      INV_EXPAND_ALL = INV_EXPAND_ALL === true ? false : true;
+      INV_EXPANDED_PRODS.clear();
+      INV_EXPANDED_LOTS.clear();
+      renderInventory();
+    }
+
+    function suggestNextSku(companyId, category, name) {
+      const coCode = companyId === "Nontakarn" ? "NK" : (companyId === "TIM Connection" ? "TIM" : String(companyId || "GEN").replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "GEN");
+      const txt = `${category || ""} ${name || ""}`.toLowerCase();
+      let catCode = "GEN";
+      if (/aed|กระตุกหัวใจ|heartstart|defib/.test(txt)) catCode = "AED";
+      else if (/แพทย์|med|monitor|ecg|ekg|ultrasound|oxygen|ventilator/.test(txt)) catCode = "MED";
+      else if (/อะไหล่|อุปกรณ์เสริม|แบต|batt|pad|electrode|cabinet|ตู้|supply|วัสดุ|สิ้นเปลือง/.test(txt)) catCode = "ACC";
+      else if (/บริการ|ซ่อม|บำรุง|calibrat|เช่า|rent|service|\bpm\b/.test(txt)) catCode = "SRV";
+      const prefix = `${coCode}-${catCode}`;
+      const re = new RegExp(`^${prefix}-(\\d+)$`, "i");
+      let maxSeq = 0;
+      ((STATE.inventory && STATE.inventory.products) || []).forEach(p => {
+        const m = String(p.productNumber || "").trim().toUpperCase().match(re);
+        if (m) {
+          const n = parseInt(m[1], 10) || 0;
+          if (n > maxSeq) maxSeq = n;
+        }
+      });
+      return `${prefix}-${String(maxSeq + 1).padStart(3, "0")}`;
+    }
+
+    function fillAutoSku() {
+      const co = document.getElementById("npCo").value;
+      const cat = document.getElementById("npCat").value;
+      const name = document.getElementById("npName").value;
+      document.getElementById("npSku").value = suggestNextSku(co, cat, name);
     }
 
     function renderInventory() {
       const inv = STATE.inventory || { products: [], lots: [], serials: [] };
       const co = document.getElementById("invCompany").value;
-      const q = document.getElementById("invSearch").value;
+      const q = String(document.getElementById("invSearch").value || "").trim();
       const isTeam = STATE.user && ["admin", "manager", "management"].includes(String(STATE.user.role || "").toLowerCase());
       const box = document.getElementById("invContent");
 
@@ -3955,134 +4075,145 @@
       const coSer = (inv.serials || []).filter(s => !co || s.company === co);
       const totalUnits = coProds.reduce((acc, p) => acc + (Number(p.totalStock) || 0), 0);
       const inStockSer = coSer.filter(s => s.status === "In Stock").length;
+      const rentedSer = coSer.filter(s => s.status === "Rented").length;
       const soldSer = coSer.filter(s => s.status === "Sold").length;
       const stockVal = coLots.reduce((acc, l) => acc + (Math.max(0, Number(l.qtyRemaining) || 0) * (Number(l.unitCost) || 0)), 0);
       const kpiEl = document.getElementById("invKpiStrip");
       if (kpiEl) {
         kpiEl.innerHTML = `
           <div class="panel" style="padding:10px 12px;"><div style="font-size:11.5px;color:var(--ink-muted);">รุ่นสินค้า / สต็อกคงเหลือ</div><div class="num" style="font-size:16px;font-weight:800;margin-top:2px;">${coProds.length} รุ่น · ${totalUnits} ชิ้น</div></div>
-          <div class="panel" style="padding:10px 12px;"><div style="font-size:11.5px;color:var(--ink-muted);">สถานะเครื่อง (Serial)</div><div class="num" style="font-size:14px;font-weight:700;margin-top:4px;">🟢 ในคลัง ${inStockSer} · 📦 ส่งมอบ ${soldSer}</div></div>
+          <div class="panel" style="padding:10px 12px;"><div style="font-size:11.5px;color:var(--ink-muted);">สถานะเครื่อง (Serial)</div><div class="num" style="font-size:13.5px;font-weight:700;margin-top:4px;">🟢 ในคลัง ${inStockSer} · 🟣 เช่า ${rentedSer} · 📦 ขาย ${soldSer}</div></div>
           <div class="panel" style="padding:10px 12px;"><div style="font-size:11.5px;color:var(--ink-muted);">มูลค่าสต็อกคงเหลือ (ทุน)</div><div class="num" style="font-size:16px;font-weight:800;margin-top:2px;">${fmtNum(stockVal)} ฿</div></div>`;
       }
 
-      if (ACTIVE_INV_VIEW === "products") {
-        const list = coProds.filter(p => {
-          if (INV_ALERTS_ONLY && !(p.status === "Active" && p.minStock > 0 && p.totalStock <= p.minStock)) return false;
-          return smartMatch(`${p.productNumber} ${p.name} ${p.category}`, q);
-        });
-        if (!list.length) {
-          box.innerHTML = `<div class="panel empty-state"><p>ยังไม่มีสินค้า</p>${isTeam ? `<button class="btn btn-primary btn-sm" onclick="openProductModal()">+ เพิ่มสินค้าแรก</button>` : ""}</div>`;
-          return;
-        }
-        box.innerHTML = `<div class="doc-grid" style="grid-template-columns:1fr;">` + list.map(p => {
+      const expBtn = document.getElementById("btnInvExpandAll");
+      if (expBtn) expBtn.textContent = INV_EXPAND_ALL === true ? "พับทั้งหมด" : "เปิดทั้งหมด";
+
+      const treeList = coProds.filter(p => {
+        const pLots = coLots.filter(l => l.company === p.company && l.productNumber === p.productNumber);
+        const pSer = coSer.filter(s => s.company === p.company && s.productNumber === p.productNumber);
+        if (ACTIVE_INV_FILTER === "in_stock" && p.totalStock <= 0 && !pSer.some(s => s.status === "In Stock")) return false;
+        if (ACTIVE_INV_FILTER === "rented" && !pSer.some(s => s.status === "Rented")) return false;
+        if (ACTIVE_INV_FILTER === "sold" && !pSer.some(s => s.status === "Sold")) return false;
+        if (ACTIVE_INV_FILTER === "alerts") {
           const low = p.status === "Active" && p.minStock > 0 && p.totalStock <= p.minStock;
-          const activeLots = coLots.filter(l => l.company === p.company && l.productNumber === p.productNumber && l.qtyRemaining > 0);
-          const prodSer = coSer.filter(s => s.company === p.company && s.productNumber === p.productNumber);
-          const serChips = prodSer.slice(0, 6).map(s => {
-            if (s.status === "In Stock") return `<span class="tag tag-receipt">🟢 ${esc(s.serialNumber)} · อยู่ในคลัง</span>`;
-            if (s.status === "Sold") return `<span class="tag tag-slip">📦 ${esc(s.serialNumber)} → ${esc(s.customer || s.projectId || "ส่งมอบแล้ว")}</span>`;
-            return `<span class="tag tag-wht">${esc(s.serialNumber)} (${esc(s.status)})</span>`;
-          }).join("") + (prodSer.length > 6 ? `<span class="co-pill">+${prodSer.length - 6} เครื่อง</span>` : "");
-          const moveBtn = isTeam && activeLots.length
-            ? (activeLots.length === 1
-                ? `<button type="button" class="btn btn-primary btn-sm" onclick="openMoveStockModal('${escJsAttr(activeLots[0].lotId)}')">ส่งมอบ / คืน</button>`
-                : `<button type="button" class="btn btn-primary btn-sm" onclick="jumpToLotMove('${escJsAttr(p.productNumber)}')">ส่งมอบ / คืน</button>`)
-            : "";
-          return `
-            <article class="doc-row-card">
-              <div>
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                  <strong class="num">${esc(p.productNumber)}</strong>
-                  <span class="co-pill">${esc(p.company)}</span>
-                  <span class="tag ${p.trackingMode === "Lot+Serial" ? "tag-tax" : "tag-teal"}">${esc(p.trackingMode)}</span>
-                  ${low ? `<span class="tag tag-wht">Low Stock</span>` : ""}
-                </div>
-                <div class="doc-title" style="margin-top:4px;">${esc(p.name)}</div>
-                <div class="doc-sub">หมวด: ${esc(p.category || "-")} · ทุน ${fmtNum(p.defaultCost)} / ขาย ${fmtNum(p.defaultPrice)} · ${activeLots.length} Lot คงเหลือ</div>
-                ${serChips ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">${serChips}</div>` : ""}
-              </div>
-              <div style="text-align:right;">
-                <div class="num" style="font-size:20px;font-weight:800;color:${low ? "#b45309" : "var(--ink)"};">${p.totalStock} <span style="font-size:12px;font-weight:500;">${esc(p.unit)}</span></div>
-                ${isTeam ? `<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap;">${moveBtn}<button type="button" class="btn btn-outline btn-sm" onclick="openProductModal('${escJsAttr(p.company)}','${escJsAttr(p.productNumber)}')">แก้ไข</button><button type="button" class="btn btn-outline btn-sm" onclick="openReceiveModal('${escJsAttr(p.company)}','${escJsAttr(p.productNumber)}')">+ รับเข้า</button></div>` : ""}
-              </div>
-            </article>`;
-        }).join("") + `</div>`;
-        return;
-      }
-
-      if (ACTIVE_INV_VIEW === "lots") {
-        const list = coLots.filter(l => {
-          if (INV_ALERTS_ONLY && l.status !== "Expired" && l.status !== "Expiring Soon") return false;
-          return smartMatch(`${l.lotId} ${l.productNumber} ${l.lotNumber} ${l.supplier} ${l.purchaseReceiptId}`, q);
-        });
-        if (!list.length) {
-          box.innerHTML = `<div class="panel empty-state"><p>ยังไม่มี Lot สินค้า</p></div>`;
-          return;
+          const lotAlert = pLots.some(l => l.status === "Expired" || l.status === "Expiring Soon");
+          if (!low && !lotAlert) return false;
         }
-        box.innerHTML = `<div class="doc-grid" style="grid-template-columns:1fr;">` + list.map(l => {
-          const stCls = l.status === "Expired" ? "tag-invoice" : (l.status === "Expiring Soon" ? "tag-wht" : (l.status === "Active" ? "tag-receipt" : "co-pill"));
-          const lotSerCnt = (inv.serials || []).filter(s => s.lotId === l.lotId).length;
-          const prod = coProds.find(p => p.company === l.company && p.productNumber === l.productNumber);
-          return `
-            <article class="doc-row-card">
-              <div>
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                  <strong class="num">${esc(l.productNumber)}</strong>
-                  ${prod ? `<span style="font-size:12.5px;color:var(--ink-muted);">${esc(prod.name)}</span>` : ""}
-                  <span class="co-pill">${esc(l.company)}</span>
-                  <span class="tag ${stCls}">${esc(l.status)}</span>
-                  ${l.expiryDate ? `<span class="num" style="font-size:12px;color:var(--ink-muted);">หมดอายุ: ${esc(fmtDispDate(l.expiryDate))}</span>` : ""}
-                </div>
-                <div class="doc-title" style="margin-top:4px;">Lot: ${esc(l.lotNumber)} <span style="font-size:12px;color:var(--ink-muted);">(${esc(l.lotId)})</span></div>
-                <div class="doc-sub">ต้นทุน ${fmtNum(l.unitCost)} · ซัพพลายเออร์: ${esc(l.supplier || "-")}${l.purchaseReceiptId ? " · บิล: " + esc(l.purchaseReceiptId) : ""}</div>
-              </div>
-              <div style="text-align:right;">
-                <div class="num" style="font-size:18px;font-weight:800;">${l.qtyRemaining} / ${l.qtyReceived}</div>
-                ${isTeam ? `<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap;">${lotSerCnt < l.qtyReceived ? `<button type="button" class="btn btn-outline btn-sm" onclick="openAddSerialModal('${escJsAttr(l.lotId)}')">+ ซีเรียล (${lotSerCnt}/${l.qtyReceived})</button>` : ""}<button type="button" class="btn btn-outline btn-sm" onclick="openMoveStockModal('${escJsAttr(l.lotId)}')">ส่งมอบ / คืน</button></div>` : ""}
-              </div>
-            </article>`;
-        }).join("") + `</div>`;
+        if (!q) return true;
+        const pText = `${p.productNumber} ${p.name} ${p.category}`;
+        const lText = pLots.map(l => `${l.lotId} ${l.lotNumber} ${l.supplier} ${l.purchaseReceiptId}`).join(" ");
+        const sText = pSer.map(s => `${s.serialNumber} ${s.customer} ${s.projectId} ${s.status} ${s.note}`).join(" ");
+        return smartMatch(`${pText} ${lText} ${sText}`, q);
+      });
+
+      if (!treeList.length) {
+        box.innerHTML = `<div class="panel empty-state"><p>ไม่พบสินค้าตามตัวกรองนี้</p>${isTeam ? `<button class="btn btn-primary btn-sm" onclick="openProductModal()">+ เพิ่มสินค้าใหม่</button>` : ""}</div>`;
         return;
       }
 
-      // Serials view
-      const list = coSer.filter(s => smartMatch(`${s.serialNumber} ${s.productNumber} ${s.lotId} ${s.projectId} ${s.customer} ${s.status} ${s.note}`, q));
-      if (!list.length) {
-        box.innerHTML = `<div class="panel empty-state"><p>ยังไม่มี Serial Number</p></div>`;
-        return;
-      }
-      box.innerHTML = `<div class="doc-grid" style="grid-template-columns:1fr;">` + list.map(s => {
-        const prod = coProds.find(p => p.company === s.company && p.productNumber === s.productNumber);
-        const lot = coLots.find(l => l.lotId === s.lotId);
-        const stInfo = s.status === "In Stock"
-          ? { cls: "tag-receipt", label: "🟢 อยู่ในคลัง (พร้อมขาย)" }
-          : (s.status === "Sold"
-            ? { cls: "tag-slip", label: "📦 ส่งมอบลูกค้าแล้ว" }
-            : (s.status === "Warranty"
-              ? { cls: "tag-wht", label: "🔧 ส่งเคลม / ซ่อม" }
-              : { cls: "tag-invoice", label: "⚠️ ชำรุด" }));
-        const locTxt = s.status === "In Stock"
-          ? `อยู่ที่: คลัง ${esc(s.company)}`
-          : `อยู่ที่: ${esc(s.customer || "ลูกค้า")}${s.projectId ? " · โปรเจกต์ " + esc(s.projectId) : ""}`;
-        const priceTxt = prod
-          ? ` · ทุน ${fmtNum(lot ? lot.unitCost : prod.defaultCost)} / ขาย ${fmtNum(prod.defaultPrice)} ฿`
-          : "";
-        const actBtn = isTeam && s.lotId && (s.status === "In Stock" || s.status === "Sold")
-          ? `<button type="button" class="btn ${s.status === "In Stock" ? "btn-primary" : "btn-outline"} btn-sm" onclick="openMoveStockModal('${escJsAttr(s.lotId)}','${s.status === "In Stock" ? "OUT" : "RETURN"}','${escJsAttr(s.serialNumber)}')">${s.status === "In Stock" ? "ส่งมอบเครื่องนี้" : "รับคืนเข้าคลัง"}</button>`
-          : "";
-        return `
-          <article class="doc-row-card">
-            <div>
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <strong class="num">${esc(s.serialNumber)}</strong>
-                <span class="tag ${stInfo.cls}">${esc(stInfo.label)}</span>
-                <span class="co-pill">${esc(s.company)}</span>
-                ${s.projectId ? `<span class="co-pill" style="background:#eff6ff;color:#1d4ed8;">${esc(s.projectId)}</span>` : ""}
+      const autoOpenProd = treeList.length <= 3;
+      box.innerHTML = `<div class="inv-tree">` + treeList.map(p => {
+        const pKey = `${p.company}::${p.productNumber}`;
+        const low = p.status === "Active" && p.minStock > 0 && p.totalStock <= p.minStock;
+        const pLots = coLots.filter(l => l.company === p.company && l.productNumber === p.productNumber);
+        const pSer = coSer.filter(s => s.company === p.company && s.productNumber === p.productNumber);
+        const isProdOpen = INV_EXPAND_ALL === true || Boolean(q) || (INV_EXPAND_ALL !== false && (INV_EXPANDED_PRODS.has(pKey) || autoOpenProd));
+
+        const lotRowsHtml = pLots.map(l => {
+          const lotSer = pSer.filter(s => s.lotId === l.lotId && (
+            ACTIVE_INV_FILTER === "rented" ? s.status === "Rented" :
+            (ACTIVE_INV_FILTER === "sold" ? s.status === "Sold" :
+            (ACTIVE_INV_FILTER === "in_stock" ? s.status === "In Stock" : true))
+          ));
+          const stCls = l.status === "Expired" ? "tag-invoice" : (l.status === "Expiring Soon" ? "tag-wht" : (l.status === "Active" ? "tag-receipt" : "co-pill"));
+          const isLotOpen = INV_EXPAND_ALL === true || Boolean(q) || (INV_EXPAND_ALL !== false && (INV_EXPANDED_LOTS.has(l.lotId) || lotSer.length <= 5));
+          const totalLotSer = pSer.filter(s => s.lotId === l.lotId).length;
+
+          const serRowsHtml = lotSer.map(s => {
+            const stInfo = s.status === "In Stock"
+              ? { cls: "tag-receipt", label: "🟢 อยู่ในคลัง" }
+              : (s.status === "Rented"
+                ? { cls: "tag-tax", label: "🟣 กำลังเช่า" }
+                : (s.status === "Sold"
+                  ? { cls: "tag-slip", label: "📦 ขายแล้ว" }
+                  : (s.status === "Warranty" ? { cls: "tag-wht", label: "🔧 เคลม/ซ่อม" } : { cls: "tag-invoice", label: "⚠️ ชำรุด" })));
+            const locTxt = s.status === "In Stock"
+              ? `คลัง ${esc(s.company)}`
+              : `${esc(s.customer || "ลูกค้า")}`;
+            const prjPill = s.projectId
+              ? `<button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" onclick="event.stopPropagation();openProjectDetail('${escJsAttr(s.projectId)}')">${esc(s.projectId)}</button>`
+              : "";
+            const dateTxt = s.warrantyEnd ? `${s.status === "Rented" ? "กำหนดคืน" : "ประกันถึง"} ${esc(fmtDispDate(s.warrantyEnd))}` : "";
+            const actBtns = isTeam && s.lotId ? (
+              s.status === "In Stock"
+                ? `<button type="button" class="btn btn-primary btn-sm" onclick="event.stopPropagation();openMoveStockModal('${escJsAttr(s.lotId)}','OUT','${escJsAttr(s.serialNumber)}')">ขาย/ส่งมอบ</button><button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();openMoveStockModal('${escJsAttr(s.lotId)}','RENT','${escJsAttr(s.serialNumber)}')">ปล่อยเช่า</button>`
+                : ((s.status === "Sold" || s.status === "Rented")
+                  ? `<button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();openMoveStockModal('${escJsAttr(s.lotId)}','RETURN','${escJsAttr(s.serialNumber)}')">${s.status === "Rented" ? "รับคืนจากเช่า" : "รับคืนเข้าคลัง"}</button>`
+                  : "")
+            ) : "";
+            return `
+              <div class="inv-tree-serial">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <strong class="num">SN: ${esc(s.serialNumber)}</strong>
+                  <span class="tag ${stInfo.cls}">${stInfo.label}</span>
+                  <span style="color:var(--ink-muted);">${locTxt}</span>
+                  ${prjPill}
+                  ${dateTxt ? `<span class="num" style="color:var(--ink-muted);font-size:11.5px;">· ${dateTxt}</span>` : ""}
+                  ${s.note ? `<span style="color:var(--ink-muted);font-size:11.5px;">· ${esc(s.note)}</span>` : ""}
+                </div>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;">${actBtns}</div>
+              </div>`;
+          }).join("");
+
+          return `
+            <div class="inv-tree-lot">
+              <div class="inv-tree-lot-head" onclick="toggleInvLot('${escJsAttr(l.lotId)}')">
+                <div style="display:flex;gap:8px;align-items:flex-start;">
+                  <span class="inv-chev ${isLotOpen ? "open" : ""}">▶</span>
+                  <div>
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <strong class="num">Lot: ${esc(l.lotNumber)}</strong>
+                      <span style="font-size:11.5px;color:var(--ink-muted);">(${esc(l.lotId)})</span>
+                      <span class="tag ${stCls}">${esc(l.status)}</span>
+                      ${l.expiryDate ? `<span class="num" style="font-size:12px;color:var(--ink-muted);">หมดอายุ: ${esc(fmtDispDate(l.expiryDate))}</span>` : ""}
+                    </div>
+                    <div class="doc-sub" style="margin-top:2px;">ทุน ${fmtNum(l.unitCost)} ฿ · ซัพพลายเออร์: ${esc(l.supplier || "-")}${l.purchaseReceiptId ? " · บิล: " + esc(l.purchaseReceiptId) : ""}</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation()">
+                  <span class="num" style="font-weight:800;font-size:14px;">คงเหลือ ${l.qtyRemaining} / ${l.qtyReceived}</span>
+                  ${isTeam && totalLotSer < l.qtyReceived ? `<button type="button" class="btn btn-outline btn-sm" onclick="openAddSerialModal('${escJsAttr(l.lotId)}')">+ ซีเรียล (${totalLotSer}/${l.qtyReceived})</button>` : ""}
+                  ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveStockModal('${escJsAttr(l.lotId)}')">ส่งมอบ / เช่า / คืน</button>` : ""}
+                </div>
               </div>
-              <div class="doc-title" style="margin-top:4px;">${esc(s.productNumber)}${prod ? " · " + esc(prod.name) : ""}</div>
-              <div class="doc-sub">${locTxt}${priceTxt}${lot && lot.expiryDate ? " · หมดอายุ: " + esc(fmtDispDate(lot.expiryDate)) : ""}${s.warrantyEnd ? " · ประกันถึง: " + esc(fmtDispDate(s.warrantyEnd)) : ""}${s.note ? " · " + esc(s.note) : ""}</div>
+              ${isLotOpen ? `<div class="inv-tree-serials">${serRowsHtml || `<div style="font-size:12px;color:var(--ink-muted);">${p.trackingMode === "Lot+Serial" ? "ยังไม่มีเลข Serial ใน Lot นี้" : "สินค้าแบบ Lot (ไม่ระบุ Serial รายชิ้น)"}</div>`}</div>` : ""}
+            </div>`;
+        }).join("");
+
+        const rentTxt = p.rentPrice > 0 ? ` · เช่า ${fmtNum(p.rentPrice)}/ด.` : "";
+        return `
+          <article class="inv-tree-prod">
+            <div class="inv-tree-head" onclick="toggleInvProd('${escJsAttr(pKey)}')">
+              <div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1;">
+                <span class="inv-chev ${isProdOpen ? "open" : ""}">▶</span>
+                <div style="min-width:0;flex:1;">
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <strong class="num" style="font-size:14px;color:var(--accent-dark);">${esc(p.productNumber)}</strong>
+                    <span class="co-pill">${esc(p.company)}</span>
+                    <span class="tag ${p.trackingMode === "Lot+Serial" ? "tag-tax" : "tag-teal"}">${esc(p.trackingMode)}</span>
+                    ${low ? `<span class="tag tag-wht">Low Stock</span>` : ""}
+                  </div>
+                  <div class="doc-title" style="margin-top:3px;">${esc(p.name)}</div>
+                  <div class="doc-sub">หมวด: ${esc(p.category || "-")} · ทุน ${fmtNum(p.defaultCost)} / ขาย ${fmtNum(p.defaultPrice)}${rentTxt} · ${pLots.length} ล็อต · ${pSer.length} เครื่อง</div>
+                </div>
+              </div>
+              <div style="text-align:right;" onclick="event.stopPropagation()">
+                <div class="num" style="font-size:19px;font-weight:800;color:${low ? "#b45309" : "var(--ink)"};">${p.totalStock} <span style="font-size:12px;font-weight:500;">${esc(p.unit)}</span></div>
+                ${isTeam ? `<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap;"><button type="button" class="btn btn-outline btn-sm" onclick="openProductModal('${escJsAttr(p.company)}','${escJsAttr(p.productNumber)}')">แก้ไข</button><button type="button" class="btn btn-primary btn-sm" onclick="openReceiveModal('${escJsAttr(p.company)}','${escJsAttr(p.productNumber)}')">+ รับเข้า</button></div>` : ""}
+              </div>
             </div>
-            <div style="text-align:right;">${actBtn}</div>
+            ${isProdOpen ? `<div class="inv-tree-body">${lotRowsHtml || `<div style="font-size:12.5px;color:var(--ink-muted);">ยังไม่มีล็อตรับเข้า — กด "+ รับเข้า" เพื่อเพิ่มสต็อกแรก</div>`}</div>` : ""}
           </article>`;
       }).join("") + `</div>`;
     }
@@ -4094,6 +4225,7 @@
       const list = (STATE.companies && STATE.companies.length) ? STATE.companies : [{ id: "Nontakarn" }, { id: "TIM Connection" }];
       const coSel = document.getElementById("npCo");
       const skuEl = document.getElementById("npSku");
+      const genBtn = document.getElementById("btnGenSku");
       coSel.innerHTML = list.map(c => `<option value="${esc(c.id)}">${esc(c.id)}</option>`).join("");
       const prod = (preCo && preSku)
         ? ((STATE.inventory && STATE.inventory.products) || []).find(x => x.company === preCo && x.productNumber === preSku)
@@ -4102,6 +4234,7 @@
       document.getElementById("prodModalTitle").textContent = prod ? `แก้ไขสินค้า ${prod.productNumber}` : "เพิ่มสินค้าใหม่ (Product Master)";
       coSel.disabled = Boolean(prod);
       skuEl.disabled = Boolean(prod);
+      if (genBtn) genBtn.classList.toggle("hidden", Boolean(prod));
       if (prod) {
         coSel.value = prod.company;
         skuEl.value = prod.productNumber;
@@ -4111,9 +4244,10 @@
         document.getElementById("npMode").value = prod.trackingMode === "Lot+Serial" ? "Lot+Serial" : "Lot";
         document.getElementById("npCost").value = prod.defaultCost != null ? prod.defaultCost : 0;
         document.getElementById("npPrice").value = prod.defaultPrice != null ? prod.defaultPrice : 0;
+        document.getElementById("npRentPrice").value = prod.rentPrice != null ? prod.rentPrice : 0;
         document.getElementById("npMin").value = prod.minStock != null ? prod.minStock : 0;
       } else {
-        ["npSku", "npName", "npCat", "npCost", "npPrice"].forEach(id => document.getElementById(id).value = "");
+        ["npSku", "npName", "npCat", "npCost", "npPrice", "npRentPrice"].forEach(id => document.getElementById(id).value = "");
         document.getElementById("npUnit").value = "ชิ้น";
         document.getElementById("npMin").value = "5";
         document.getElementById("npMode").value = "Lot";
@@ -4123,21 +4257,28 @@
     }
 
     function submitNewProduct() {
-      const productNumber = document.getElementById("npSku").value.trim().toUpperCase();
+      const co = document.getElementById("npCo").value;
+      const cat = document.getElementById("npCat").value;
       const name = document.getElementById("npName").value.trim();
-      if (!productNumber || !name) return toast("กรุณาระบุรหัสสินค้า (SKU) และชื่อสินค้า");
+      let productNumber = document.getElementById("npSku").value.trim().toUpperCase();
+      if (!name) return toast("กรุณาระบุชื่อสินค้า");
+      if (!EDITING_PRODUCT && !productNumber) {
+        productNumber = suggestNextSku(co, cat, name);
+        document.getElementById("npSku").value = productNumber;
+      }
       const btn = document.getElementById("btnSaveProd");
       btn.disabled = true;
       const isEdit = Boolean(EDITING_PRODUCT);
       const payload = {
-        company: isEdit ? EDITING_PRODUCT.company : document.getElementById("npCo").value,
+        company: isEdit ? EDITING_PRODUCT.company : co,
         productNumber: isEdit ? EDITING_PRODUCT.productNumber : productNumber,
         name,
-        category: document.getElementById("npCat").value,
+        category: cat,
         unit: document.getElementById("npUnit").value,
         trackingMode: document.getElementById("npMode").value,
         defaultCost: document.getElementById("npCost").value,
         defaultPrice: document.getElementById("npPrice").value,
+        rentPrice: document.getElementById("npRentPrice").value,
         minStock: document.getElementById("npMin").value
       };
       callApi(isEdit ? "updateProduct" : "addProduct", isEdit ? "apiUpdateProduct" : "apiAddProduct", [SESSION_TOKEN, payload], res => {
@@ -4278,9 +4419,9 @@
       const lot = (inv.lots || []).find(l => l.lotId === lotId);
       if (!lot) return;
       MOVING_LOT = lot;
-      document.getElementById("mvTitle").textContent = `ส่งมอบ / รับคืนสต็อก: ${lot.productNumber}`;
+      document.getElementById("mvTitle").textContent = `ส่งมอบ / ปล่อยเช่า / รับคืน: ${lot.productNumber}`;
       document.getElementById("mvSub").textContent = `Lot ${lot.lotNumber} (${lot.lotId}) · คงเหลือ ${lot.qtyRemaining}`;
-      document.getElementById("mvType").value = presetType === "RETURN" ? "RETURN" : "OUT";
+      document.getElementById("mvType").value = presetType === "RETURN" ? "RETURN" : (presetType === "RENT" ? "RENT" : "OUT");
       document.getElementById("mvQty").value = "1";
       const prjSel = document.getElementById("mvProject");
       prjSel.innerHTML = `<option value="">— ไม่ผูกโปรเจกต์ —</option>` +
@@ -4300,9 +4441,13 @@
       const hintEl = document.getElementById("mvHint");
       if (hintEl) {
         hintEl.textContent = mvType === "OUT"
-          ? "ส่งมอบ / ขายให้ลูกค้า: ตัดสต็อกออกจากคลัง และผูกต้นทุนเข้าโปรเจกต์ที่เลือก (ถ้ามี)"
-          : "รับคืนเข้าคลัง: คืนสินค้ากลับเข้าคลังบริษัทเป็นสถานะพร้อมขาย (In Stock)";
+          ? "ส่งมอบ / ขายให้ลูกค้า: ตัดสต็อกออกจากคลัง และผูกต้นทุนเข้าโปรเจกต์ที่เลือก"
+          : (mvType === "RENT"
+            ? "ปล่อยเช่าให้ลูกค้า: ตัดสต็อกชั่วคราวเป็นสถานะ 'กำลังเช่า' (ไม่ตัดเป็นต้นทุนขาย)"
+            : "รับคืนเข้าคลัง: คืนสินค้าที่ขายหรือให้เช่ากลับมาเป็นสถานะพร้อมใช้งาน (In Stock)");
       }
+      const wLbl = document.getElementById("mvWarrantyLabel");
+      if (wLbl) wLbl.textContent = mvType === "RENT" ? "ครบกำหนดคืนเช่า (ไม่บังคับ)" : "หมดประกัน (ไม่บังคับ)";
       const outMeta = document.getElementById("mvOutMeta");
       const custWrap = document.getElementById("mvCustWrap");
       if (outMeta) outMeta.classList.toggle("hidden", mvType === "RETURN");
@@ -4310,12 +4455,17 @@
       document.getElementById("mvSerialWrap").classList.toggle("hidden", !isSerial);
       document.getElementById("mvQtyWrap").classList.toggle("hidden", isSerial);
       if (!isSerial) return;
-      const targetStatus = mvType === "OUT" ? "In Stock" : "Sold";
-      const choices = (inv.serials || []).filter(s => s.lotId === MOVING_LOT.lotId && s.status === targetStatus);
+      const choices = (inv.serials || []).filter(s =>
+        s.lotId === MOVING_LOT.lotId &&
+        (mvType === "RETURN" ? (s.status === "Sold" || s.status === "Rented") : s.status === "In Stock")
+      );
       const preUpper = String(presetSerial || "").trim().toUpperCase();
       document.getElementById("mvSerialList").innerHTML = choices.length
-        ? choices.map(s => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="mv-sn-cb" value="${esc(s.serialNumber)}" ${preUpper && String(s.serialNumber).toUpperCase() === preUpper ? "checked" : ""} style="width:auto;min-height:auto;"> <span class="num">${esc(s.serialNumber)}</span></label>`).join("")
-        : `<div style="font-size:12px;color:var(--ink-muted);">ไม่มี Serial ในสถานะ ${targetStatus}</div>`;
+        ? choices.map(s => {
+            const stTag = mvType === "RETURN" ? ` <span class="co-pill">${s.status === "Rented" ? "กำลังเช่า" : "ขายแล้ว"}</span>` : "";
+            return `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="mv-sn-cb" value="${esc(s.serialNumber)}" ${preUpper && String(s.serialNumber).toUpperCase() === preUpper ? "checked" : ""} style="width:auto;min-height:auto;"> <span class="num">${esc(s.serialNumber)}</span>${stTag}</label>`;
+          }).join("")
+        : `<div style="font-size:12px;color:var(--ink-muted);">ไม่มี Serial ที่เลือกได้</div>`;
     }
 
     function submitMoveStock() {
