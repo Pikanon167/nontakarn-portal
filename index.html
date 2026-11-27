@@ -564,6 +564,27 @@
     .confirm-body { font-size: 14px; color: var(--ink-muted); line-height: 1.55; margin-bottom: 18px; }
     .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 
+    .prj-mini-rail { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 8px 10px; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; }
+    .prj-mini-dot { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-muted); }
+    .prj-mini-dot.done { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+    .prj-mini-dot.next { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+    .prj-mini-dot.skip { opacity: .48; text-decoration: line-through; }
+    .prj-mini-line { width: 10px; height: 2px; background: var(--border); flex-shrink: 0; }
+    .prj-mini-line.done { background: #10b981; }
+    .prj-stepper { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px; margin: 12px 0; }
+    .prj-step-node { position: relative; padding: 8px 6px; border-radius: 10px; border: 1px solid var(--border); background: #f8fafc; text-align: center; font-size: 11.5px; }
+    .prj-step-node.done { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
+    .prj-step-node.next { background: #eff6ff; border-color: #60a5fa; color: #1e40af; box-shadow: 0 0 0 2px rgba(59,130,246,.12); }
+    .prj-step-node.skip { background: #f1f5f9; opacity: .55; }
+    .prj-step-num { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; margin-bottom: 3px; background: var(--border); color: var(--ink); }
+    .prj-step-node.done .prj-step-num { background: #10b981; color: #fff; }
+    .prj-step-node.next .prj-step-num { background: #2563eb; color: #fff; }
+    .prj-step-card { border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface); display: grid; gap: 8px; }
+    .prj-step-card.prj-step-done { border-left-color: #10b981; }
+    .prj-step-card.prj-step-next { border-left-color: #2563eb; background: #f8fbff; }
+    .prj-step-card.prj-step-skip { border-left-color: #cbd5e1; opacity: .68; background: #f8fafc; }
+    .prj-doc-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 10px; border-radius: 8px; background: #f8fafc; border: 1px solid var(--border); font-size: 12.5px; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
@@ -1211,12 +1232,20 @@
           <div class="field"><label for="newPrjCust">ลูกค้า</label><input id="newPrjCust" type="text" placeholder="ชื่อลูกค้า / รพ."></div>
           <div class="field"><label for="newPrjDate">วันที่เริ่ม</label><input id="newPrjDate" type="date"></div>
         </div>
+        <div class="field"><label for="newPrjTemplate">รูปแบบขั้นตอนเอกสาร</label><select id="newPrjTemplate"><option value="standard">ขายสินค้า + ติดตั้ง (ครบ 6 ขั้นตอน)</option><option value="service_wht">งานบริการ / จ้างทำของ (เน้นหัก ณ ที่จ่าย 50 ทวิ)</option><option value="product_only">ขายสินค้าทั่วไป (ไม่ต้องมี 50 ทวิ)</option><option value="procurement">จัดซื้อ / จ้างผู้รับเหมา (ฝั่งรายจ่าย)</option></select></div>
         <div class="field"><label for="newPrjNote">หมายเหตุ</label><input id="newPrjNote" type="text"></div>
       </div>
       <div class="confirm-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('projectModal')">ยกเลิก</button>
         <button type="button" id="btnSavePrj" class="btn btn-primary btn-sm" onclick="submitNewProject()">สร้างโปรเจกต์</button>
       </div>
+    </div>
+  </div>
+
+  <!-- PROJECT DETAIL & DOCUMENT PIPELINE MODAL -->
+  <div id="projectDetailModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('projectDetailModal')">
+    <div class="confirm-card" style="max-width:780px;max-height:90vh;overflow-y:auto;">
+      <div id="projectDetailBody"></div>
     </div>
   </div>
 
@@ -1774,6 +1803,10 @@
           updateEraBtn_();
           renderExpenses();
           renderProjects();
+          if (typeof OPEN_PROJECT_DETAIL_ID !== "undefined" && OPEN_PROJECT_DETAIL_ID) {
+            const pdm = document.getElementById("projectDetailModal");
+            if (pdm && !pdm.classList.contains("hidden")) renderProjectDetail();
+          }
           renderInventory();
           renderIssuedDocs();
           renderCounterparties();
@@ -2210,16 +2243,19 @@
       toast(`สร้างชุดส่งบัญชีแล้ว (VAT ${vatList.length}, 50ทวิ ${whtList.length}, รวม ${LAST_FILTERED_EXP.length})`);
     }
 
-    function openUploadModal() {
+    function openUploadModal(preset) {
+      const p = preset || {};
       const cos = (STATE.companies && STATE.companies.length) ? STATE.companies : [{ id: "Nontakarn" }, { id: "TIM Connection" }];
       document.getElementById("upCompany").innerHTML = `<option value="">ให้ AI ตรวจอัตโนมัติ</option>` +
         cos.map(c => `<option value="${esc(c.id)}">${esc(c.id)}</option>`).join("");
-      const prjs = (STATE.projects || []).filter(p => p.status === "Active");
+      const prjs = (STATE.projects || []).filter(x => x.status === "Active" || (p.projectId && x.projectId === p.projectId));
       document.getElementById("upProject").innerHTML = `<option value="">- ไม่ผูกโปรเจกต์ -</option>` +
-        prjs.map(p => `<option value="${esc(p.projectId)}">${esc(p.projectId)} — ${esc(p.title)}</option>`).join("");
+        prjs.map(x => `<option value="${esc(x.projectId)}">${esc(x.projectId)} — ${esc(x.title)}</option>`).join("");
       document.getElementById("upFile").value = "";
-      document.getElementById("upFlow").value = "";
-      document.getElementById("upNote").value = "";
+      document.getElementById("upCompany").value = p.company || "";
+      document.getElementById("upProject").value = p.projectId || "";
+      document.getElementById("upFlow").value = p.flow || "";
+      document.getElementById("upNote").value = p.note || "";
       const btn = document.getElementById("btnSubmitUpload");
       btn.disabled = false;
       btn.textContent = "อัปโหลดและวิเคราะห์";
@@ -2752,6 +2788,71 @@
       return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    const PROJECT_TEMPLATES = {
+      standard: { label: "ขายสินค้า + ติดตั้ง (ครบ 6 ขั้นตอน)", skipped: [] },
+      service_wht: { label: "งานบริการ / จ้างทำของ (เน้นหัก ณ ที่จ่าย 50 ทวิ)", skipped: ["po", "delivery"] },
+      product_only: { label: "ขายสินค้าทั่วไป (ไม่ต้องมี 50 ทวิ)", skipped: ["wht"] },
+      procurement: { label: "จัดซื้อ / จ้างผู้รับเหมา (ฝั่งรายจ่าย)", skipped: ["qt", "iv"] }
+    };
+    const PROJECT_STEPS = [
+      { key: "qt", short: "1. QT", title: "ใบเสนอราคา (Quotation)", hint: "เสนอราคาให้ลูกค้าอนุมัติก่อนเริ่มงาน", issueType: "QT" },
+      { key: "po", short: "2. PO", title: "ใบสั่งซื้อ (Purchase Order)", hint: "ออก PO สั่งของ หรือรับ PO จากลูกค้า", issueType: "PO", uploadFlow: "รายจ่าย", uploadNote: "ใบสั่งซื้อ PO" },
+      { key: "delivery", short: "3. ส่งมอบ", title: "ส่งมอบสินค้า / ตัด Serial", hint: "ตัดสต็อก Serial ให้โปรเจกต์ หรือติ๊กส่งมอบแล้ว", manualAction: true },
+      { key: "iv", short: "4. วางบิล", title: "ใบแจ้งหนี้ / วางบิล (Invoice)", hint: "ออกใบวางบิลเรียกเก็บเงินลูกค้า", issueType: "IV", uploadFlow: "รายรับ", uploadNote: "ใบแจ้งหนี้/วางบิล" },
+      { key: "payment", short: "5. รับ-จ่าย", title: "ใบกำกับภาษี / ใบเสร็จ / สลิป", hint: "ออก TX/RC หรือแนบสลิปโอนเงินจริง", issueType: "TX", issueAlt: "RC", uploadFlow: "", uploadNote: "สลิปโอนเงิน/ใบเสร็จ" },
+      { key: "wht", short: "6. 50 ทวิ", title: "หนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)", hint: "แนบใบ 50 ทวิ เพื่อส่งปิดงบบัญชี", uploadFlow: "", uploadNote: "50 ทวิ (หัก ณ ที่จ่าย)" }
+    ];
+    let OPEN_PROJECT_DETAIL_ID = "";
+
+    function computeProjectPipeline(p) {
+      const wf = (p && p.workflow) || { template: "standard", skipped: [], manualDone: [] };
+      const skipped = Array.isArray(wf.skipped) ? wf.skipped : [];
+      const manualDone = Array.isArray(wf.manualDone) ? wf.manualDone : [];
+      const issued = (STATE.issuedDocs || []).filter(d => d.projectId === p.projectId);
+      const activeIssued = issued.filter(d => d.status !== "Cancelled");
+      const logs = (STATE.logs || []).filter(l => l.projectId === p.projectId);
+      const serials = ((STATE.inventory && STATE.inventory.serials) || []).filter(s => s.projectId === p.projectId);
+
+      const usedLogIds = new Set();
+      const matched = { qt: [], po: [], delivery: [], iv: [], payment: [], wht: [] };
+
+      issued.forEach(d => {
+        if (d.docType === "QT") matched.qt.push({ kind: "issued", item: d });
+        else if (d.docType === "PO") matched.po.push({ kind: "issued", item: d });
+        else if (d.docType === "IV") matched.iv.push({ kind: "issued", item: d });
+        else if (d.docType === "TX" || d.docType === "RC") matched.payment.push({ kind: "issued", item: d });
+      });
+      serials.forEach(s => matched.delivery.push({ kind: "serial", item: s }));
+      logs.forEach(l => {
+        const dt = String(l.docType || "");
+        const sm = String(l.sum || "");
+        const rid = l.receiptId + ":" + l.row;
+        if (dt.includes("50 ทวิ")) { matched.wht.push({ kind: "log", item: l }); usedLogIds.add(rid); }
+        else if (dt === "ใบแจ้งหนี้/วางบิล") { matched.iv.push({ kind: "log", item: l }); usedLogIds.add(rid); }
+        else if (["สลิปโอนเงิน", "ใบกำกับภาษี", "ใบเสร็จรับเงิน"].includes(dt)) { matched.payment.push({ kind: "log", item: l }); usedLogIds.add(rid); }
+        else if (/\bPO\b|ใบสั่งซื้อ/i.test(dt + " " + sm)) { matched.po.push({ kind: "log", item: l }); usedLogIds.add(rid); }
+      });
+      const otherLogs = logs.filter(l => !usedLogIds.has(l.receiptId + ":" + l.row));
+
+      let foundNext = false;
+      const steps = PROJECT_STEPS.map(st => {
+        const isSkip = skipped.includes(st.key);
+        const docs = matched[st.key] || [];
+        const hasActiveDoc = docs.some(x => x.kind !== "issued" || x.item.status !== "Cancelled");
+        const isDone = !isSkip && (hasActiveDoc || manualDone.includes(st.key));
+        let state = "pending";
+        if (isSkip) state = "skip";
+        else if (isDone) state = "done";
+        else if (!foundNext) { state = "next"; foundNext = true; }
+        return { ...st, state, isSkip, isDone, manualDone: manualDone.includes(st.key), docs };
+      });
+      const activeSteps = steps.filter(s => !s.isSkip);
+      const doneCount = activeSteps.filter(s => s.isDone).length;
+      const nextStep = steps.find(s => s.state === "next") || null;
+      const whtExpected = activeIssued.reduce((s, d) => s + (Number(d.whtAmount) || 0), 0);
+      return { wf, steps, doneCount, activeCount: activeSteps.length, nextStep, logs, issued, serials, otherLogs, whtExpected };
+    }
+
     function renderProjects() {
       const q = (document.getElementById("prjSearch").value || "").toLowerCase().trim();
       const co = document.getElementById("prjCompany").value;
@@ -2768,14 +2869,18 @@
         return;
       }
       box.innerHTML = list.map(p => {
-        const linkedLogs = (STATE.logs || []).filter(l => l.projectId === p.projectId);
-        const linkedSerials = ((STATE.inventory && STATE.inventory.serials) || []).filter(s => s.projectId === p.projectId);
+        const pipe = computeProjectPipeline(p);
         const profitCls = p.netProfit >= 0 ? "amt-in" : "amt-out";
         const statusSel = isTeam ? `
           <select style="width:auto;" onchange="changeProjectStatus('${escJsAttr(p.projectId)}', this.value)">
             ${["Active", "Completed", "Cancelled"].map(s => `<option value="${s}" ${p.status === s ? "selected" : ""}>${s}</option>`).join("")}
           </select>` : `<span class="tag tag-teal">${esc(p.status)}</span>`;
         const prjStripe = p.status === "Active" ? "m-item-in" : (p.status === "Completed" ? "m-item-teal" : "m-item-slate");
+        const miniRail = pipe.steps.map((s, idx) => {
+          const icon = s.state === "done" ? "✓" : (s.state === "next" ? "→" : (s.state === "skip" ? "–" : ""));
+          const line = idx < pipe.steps.length - 1 ? `<span class="prj-mini-line ${s.state === "done" ? "done" : ""}"></span>` : "";
+          return `<span class="prj-mini-dot ${s.state}">${icon ? icon + " " : ""}${esc(s.short)}</span>${line}`;
+        }).join("");
         return `
           <article class="panel ${prjStripe}" style="display:grid;gap:10px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
@@ -2785,10 +2890,15 @@
                   <span class="co-pill ${companyPillClass(p.company)}">${esc(p.company)}</span>
                   <span style="font-size:12px;color:var(--ink-muted);" class="num">${esc(fmtDispDate(p.startDate))}</span>
                 </div>
-                <div style="font-size:15.5px;font-weight:700;margin-top:2px;">${esc(p.title)}</div>
+                <button type="button" onclick="openProjectDetail('${escJsAttr(p.projectId)}')" style="background:none;border:none;padding:2px 0;text-align:left;cursor:pointer;font-size:15.5px;font-weight:700;color:var(--ink);">${esc(p.title)}</button>
                 <div style="font-size:12.5px;color:var(--ink-muted);">ลูกค้า: ${esc(p.customer || "-")}${p.note ? " · " + esc(p.note) : ""}</div>
               </div>
               <div>${statusSel}</div>
+            </div>
+            <div class="prj-mini-rail">${miniRail}</div>
+            <div style="font-size:12px;color:var(--ink-muted);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span>ความคืบหน้า: <strong class="num">${pipe.doneCount}/${pipe.activeCount}</strong> ขั้นตอน${pipe.nextStep ? ` · ถัดไป: <strong style="color:var(--brand);">${esc(pipe.nextStep.title)}</strong>` : " · <strong>ครบทุกขั้นตอนแล้ว</strong>"}</span>
+              ${pipe.whtExpected > 0 && !pipe.steps.find(x => x.key === "wht").isDone && !pipe.steps.find(x => x.key === "wht").isSkip ? `<span class="tag tag-wht">รอใบ 50 ทวิ (${fmtNum(pipe.whtExpected)} ฿)</span>` : ""}
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding:10px;background:#f8fafc;border-radius:10px;border:1px solid var(--border);">
               <div><div style="font-size:12px;color:var(--ink-muted);">รายรับ (+)</div><div class="num amt-in" style="font-weight:700;">+${fmtNum(p.totalIncome)}</div></div>
@@ -2796,13 +2906,164 @@
               <div><div style="font-size:12px;color:var(--ink-muted);">ต้นทุนสินค้า (-)</div><div class="num amt-out" style="font-weight:700;">-${fmtNum(p.productCost)}</div></div>
               <div><div style="font-size:12px;color:var(--ink-muted);">กำไรสุทธิ</div><div class="num ${profitCls}" style="font-weight:800;">${p.netProfit >= 0 ? "+" : "-"}${fmtNum(Math.abs(p.netProfit))}</div></div>
             </div>
-            <div style="font-size:12px;color:var(--ink-muted);display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-              <span>บิลที่ผูก: <strong>${linkedLogs.length}</strong> รายการ</span>
-              <span>Serial ส่งมอบ: <strong>${linkedSerials.length}</strong> เครื่อง</span>
-              ${linkedLogs.length ? `<button type="button" class="btn btn-outline btn-sm" onclick="jumpToProjectBills('${escJsAttr(p.projectId)}')">ดูบิลในโปรเจกต์</button>` : ""}
+            <div style="font-size:12px;color:var(--ink-muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <span>PDF ออกแล้ว: <strong>${pipe.issued.length}</strong></span>
+              <span>บิลที่ผูก: <strong>${pipe.logs.length}</strong></span>
+              <span>Serial ส่งมอบ: <strong>${pipe.serials.length}</strong></span>
+              <button type="button" class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openProjectDetail('${escJsAttr(p.projectId)}')">เปิดดูขั้นตอน & เอกสาร →</button>
+              ${pipe.logs.length ? `<button type="button" class="btn btn-outline btn-sm" onclick="jumpToProjectBills('${escJsAttr(p.projectId)}')">ดูบิลทั้งหมด</button>` : ""}
             </div>
           </article>`;
       }).join("");
+    }
+
+    function openProjectDetail(projectId) {
+      OPEN_PROJECT_DETAIL_ID = projectId;
+      renderProjectDetail();
+      document.getElementById("projectDetailModal").classList.remove("hidden");
+    }
+
+    function renderProjectDetail() {
+      const p = (STATE.projects || []).find(x => x.projectId === OPEN_PROJECT_DETAIL_ID);
+      const body = document.getElementById("projectDetailBody");
+      if (!p || !body) return;
+      const isTeam = STATE.user && ["admin", "manager", "management"].includes(String(STATE.user.role || "").toLowerCase());
+      const pipe = computeProjectPipeline(p);
+      const whtNote = pipe.whtExpected > 0 ? ` · มียอดหัก ณ ที่จ่ายรอรับ ${fmtNum(pipe.whtExpected)} ฿` : "";
+
+      const railHtml = pipe.steps.map((s, idx) => {
+        const badge = s.state === "done" ? "✓" : (s.state === "skip" ? "–" : String(idx + 1));
+        return `<div class="prj-step-node ${s.state}"><div class="prj-step-num">${badge}</div><div style="font-weight:700;">${esc(s.short.replace(/^\d+\.\s*/, ""))}</div></div>`;
+      }).join("");
+
+      const stepsHtml = pipe.steps.map(s => {
+        const stateTag = s.state === "done"
+          ? `<span class="tag tag-ok">สำเร็จแล้ว</span>`
+          : (s.state === "next" ? `<span class="tag tag-slip">ขั้นถัดไป</span>`
+            : (s.state === "skip" ? `<span class="tag">ข้ามขั้นนี้</span>` : `<span class="tag">รอดำเนินการ</span>`));
+
+        const docsHtml = s.docs.length ? s.docs.map(entry => {
+          if (entry.kind === "issued") {
+            const d = entry.item;
+            const muted = d.status === "Cancelled" ? "opacity:.55;" : "";
+            return `<div class="prj-doc-row" style="${muted}">
+              <div><strong class="num">${esc(d.docId)}</strong> · <span class="tag">${esc(d.status)}</span> · <span class="num">${fmtNum(d.grandTotal)} ฿</span></div>
+              <div style="display:flex;gap:6px;align-items:center;">${d.pdfUrl ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(d.pdfUrl))}" target="_blank" rel="noopener">เปิด PDF</a>` : ""}</div>
+            </div>`;
+          }
+          if (entry.kind === "log") {
+            const l = entry.item;
+            return `<div class="prj-doc-row">
+              <div><strong class="num">${esc(l.receiptId)}</strong> · ${esc(l.docType || l.flow)} · <span class="num">${esc(l.amt || "-")}</span></div>
+              <div style="display:flex;gap:6px;align-items:center;"><span class="tag">${esc(l.verifyStatus || "-")}</span>${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์</a>` : ""}</div>
+            </div>`;
+          }
+          const sr = entry.item;
+          return `<div class="prj-doc-row"><div><strong class="num">${esc(sr.serial)}</strong> · ${esc(sr.productNumber)} (Lot ${esc(sr.lotNumber)})</div><span class="tag tag-teal">${esc(sr.status)}</span></div>`;
+        }).join("") : `<div style="font-size:12px;color:var(--ink-muted);">ยังไม่มีเอกสารในขั้นตอนนี้</div>`;
+
+        const btns = [];
+        if (isTeam && !s.isSkip) {
+          if (s.issueType) {
+            const whtDef = (s.key === "payment" && pipe.wf.template === "service_wht") ? 3 : 0;
+            btns.push(`<button type="button" class="btn btn-primary btn-sm" onclick="openIssueDocModal({docType:'${s.issueType}',company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',customer:'${escJsAttr(p.customer)}',whtRate:${whtDef}})">+ ออก ${s.issueType} (PDF)</button>`);
+          }
+          if (s.issueAlt) {
+            btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="openIssueDocModal({docType:'${s.issueAlt}',company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',customer:'${escJsAttr(p.customer)}'})">+ ออก ${s.issueAlt}</button>`);
+          }
+          if (s.uploadNote) {
+            btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="openUploadModal({company:'${escJsAttr(p.company)}',projectId:'${escJsAttr(p.projectId)}',flow:'${escJsAttr(s.uploadFlow || "")}',note:'${escJsAttr(s.uploadNote)}'})">อัปโหลด / แนบบิล</button>`);
+          }
+          if (s.manualAction) {
+            btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="toggleProjectStepDone('${escJsAttr(p.projectId)}','${s.key}')">${s.manualDone ? "ยกเลิกติ๊กส่งมอบ" : "✓ ติ๊กส่งมอบแล้ว"}</button>`);
+          }
+        }
+        if (isTeam) {
+          btns.push(`<button type="button" class="btn btn-outline btn-sm" onclick="toggleProjectStepSkip('${escJsAttr(p.projectId)}','${s.key}')">${s.isSkip ? "ใช้ขั้นนี้" : "ข้ามขั้นนี้"}</button>`);
+        }
+
+        return `
+          <div class="prj-step-card prj-step-${s.state}">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><strong>${esc(s.title)}</strong>${stateTag}</div>
+                <div style="font-size:12px;color:var(--ink-muted);">${esc(s.hint)}${s.key === "wht" ? esc(whtNote) : ""}</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">${btns.join("")}</div>
+            </div>
+            ${docsHtml}
+          </div>`;
+      }).join("");
+
+      const otherHtml = pipe.otherLogs.length ? `
+        <div style="margin-top:12px;display:grid;gap:6px;">
+          <div style="font-size:13px;font-weight:700;">เอกสาร / บิลอื่นๆ ที่ผูกกับโปรเจกต์ (${pipe.otherLogs.length})</div>
+          ${pipe.otherLogs.map(l => `<div class="prj-doc-row">
+            <div><strong class="num">${esc(l.receiptId)}</strong> · ${esc(l.docType || l.flow)} · ${esc(l.sum || l.vendor || "-")} · <span class="num">${esc(l.amt || "-")}</span></div>
+            ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์</a>` : ""}
+          </div>`).join("")}
+        </div>` : "";
+
+      const tplOpts = Object.keys(PROJECT_TEMPLATES).map(k =>
+        `<option value="${k}" ${pipe.wf.template === k ? "selected" : ""}>${esc(PROJECT_TEMPLATES[k].label)}</option>`
+      ).join("");
+
+      body.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <strong class="num" style="color:var(--brand);">${esc(p.projectId)}</strong>
+              <span class="co-pill ${companyPillClass(p.company)}">${esc(p.company)}</span>
+              <span class="tag tag-teal">${esc(p.status)}</span>
+            </div>
+            <div class="confirm-title" style="margin-top:4px;">${esc(p.title)}</div>
+            <div style="font-size:12.5px;color:var(--ink-muted);">ลูกค้า: ${esc(p.customer || "-")}${p.note ? " · " + esc(p.note) : ""}</div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('projectDetailModal')">ปิด</button>
+        </div>
+        ${isTeam ? `<div class="field" style="margin-bottom:10px;"><label for="prjDetailTpl">รูปแบบขั้นตอนเอกสาร</label><select id="prjDetailTpl" onchange="changeProjectTemplate('${escJsAttr(p.projectId)}', this.value)">${tplOpts}</select></div>` : ""}
+        <div class="prj-stepper">${railHtml}</div>
+        <div style="display:grid;gap:8px;">${stepsHtml}</div>
+        ${otherHtml}
+      `;
+    }
+
+    function saveProjectWorkflow(projectId, nextWf) {
+      const p = (STATE.projects || []).find(x => x.projectId === projectId);
+      if (p) p.workflow = nextWf;
+      renderProjectDetail();
+      renderProjects();
+      callApi("updateProjectWorkflow", "apiUpdateProjectWorkflow", [SESSION_TOKEN, projectId, nextWf], res => {
+          if (!res || !res.ok) return handleApiError_(res, "บันทึกขั้นตอนไม่สำเร็จ");
+          if (p && res.workflow) p.workflow = res.workflow;
+          toast("บันทึกขั้นตอนโปรเจกต์แล้ว");
+        }, err => toast(err.message));
+    }
+
+    function changeProjectTemplate(projectId, tpl) {
+      const p = (STATE.projects || []).find(x => x.projectId === projectId);
+      if (!p) return;
+      const spec = PROJECT_TEMPLATES[tpl] || PROJECT_TEMPLATES.standard;
+      const curManual = (p.workflow && p.workflow.manualDone) || [];
+      saveProjectWorkflow(projectId, { template: tpl, skipped: [...spec.skipped], manualDone: [...curManual] });
+    }
+
+    function toggleProjectStepSkip(projectId, stepKey) {
+      const p = (STATE.projects || []).find(x => x.projectId === projectId);
+      if (!p) return;
+      const wf = p.workflow || { template: "standard", skipped: [], manualDone: [] };
+      const skipped = new Set(wf.skipped || []);
+      if (skipped.has(stepKey)) skipped.delete(stepKey); else skipped.add(stepKey);
+      saveProjectWorkflow(projectId, { template: wf.template || "standard", skipped: Array.from(skipped), manualDone: wf.manualDone || [] });
+    }
+
+    function toggleProjectStepDone(projectId, stepKey) {
+      const p = (STATE.projects || []).find(x => x.projectId === projectId);
+      if (!p) return;
+      const wf = p.workflow || { template: "standard", skipped: [], manualDone: [] };
+      const md = new Set(wf.manualDone || []);
+      if (md.has(stepKey)) md.delete(stepKey); else md.add(stepKey);
+      saveProjectWorkflow(projectId, { template: wf.template || "standard", skipped: wf.skipped || [], manualDone: Array.from(md) });
     }
 
     function openProjectModal() {
@@ -2811,6 +3072,7 @@
       document.getElementById("newPrjTitle").value = "";
       document.getElementById("newPrjCust").value = "";
       document.getElementById("newPrjDate").value = formatYMD(new Date());
+      document.getElementById("newPrjTemplate").value = "standard";
       document.getElementById("newPrjNote").value = "";
       document.getElementById("btnSavePrj").disabled = false;
       document.getElementById("projectModal").classList.remove("hidden");
@@ -2826,6 +3088,7 @@
           title,
           customer: document.getElementById("newPrjCust").value,
           startDate: document.getElementById("newPrjDate").value,
+          workflowTemplate: document.getElementById("newPrjTemplate").value,
           note: document.getElementById("newPrjNote").value
         }], res => {
           btn.disabled = false;
@@ -3186,19 +3449,32 @@
       }).join("");
     }
 
-    function openIssueDocModal() {
+    function openIssueDocModal(preset) {
+      const p = preset || {};
       const list = (STATE.companies && STATE.companies.length) ? STATE.companies : [{ id: "Nontakarn" }, { id: "TIM Connection" }];
       document.getElementById("idCo").innerHTML = list.map(c => `<option value="${esc(c.id)}">${esc(c.id)}</option>`).join("");
+      if (p.company) document.getElementById("idCo").value = p.company;
       const cps = STATE.counterparties || [];
       document.getElementById("idPartnerPick").innerHTML = `<option value="">— พิมพ์เอง หรือเลือกจากฐานข้อมูล (${cps.length}) —</option>` +
         cps.map(c => `<option value="${esc(c.partnerId)}">${esc(c.nameTh || c.nameEn)} (${esc(c.branch || "สำนักงานใหญ่")})</option>`).join("");
-      document.getElementById("idType").value = "QT";
+      document.getElementById("idType").value = p.docType || "QT";
       document.getElementById("idDate").value = formatYMD(new Date());
       ["idDue", "idCust", "idTax", "idAddr", "idNote"].forEach(id => document.getElementById(id).value = "");
       document.getElementById("idDiscount").value = "0";
       document.getElementById("idVat").value = "7";
-      document.getElementById("idWht").value = "0";
+      document.getElementById("idWht").value = String(p.whtRate != null ? p.whtRate : 0);
       refreshIssueProjectAndProd();
+      if (p.projectId) document.getElementById("idPrj").value = p.projectId;
+      if (p.customer) {
+        const q = String(p.customer).trim().toLowerCase();
+        const matchCp = cps.find(c => [c.nameTh, c.nameEn, c.aliases].some(x => x && String(x).toLowerCase().includes(q)));
+        if (matchCp) {
+          document.getElementById("idPartnerPick").value = matchCp.partnerId;
+          applyPartnerToIssueDoc();
+        } else {
+          document.getElementById("idCust").value = p.customer;
+        }
+      }
       ISSUE_ITEMS = [{ itemType: "Service", productNumber: "", description: "", qty: 1, unit: "งาน", unitPrice: 0 }];
       renderIssueItems();
       document.getElementById("btnSaveIssueDoc").disabled = false;
