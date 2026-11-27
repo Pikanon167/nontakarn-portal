@@ -1448,10 +1448,10 @@
     </div>
   </div>
 
-  <!-- PRODUCT CREATE MODAL -->
+  <!-- PRODUCT CREATE / EDIT MODAL -->
   <div id="productModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('productModal')">
     <div class="confirm-card" style="max-width:440px;">
-      <div class="confirm-title">เพิ่มสินค้าใหม่ (Product Master)</div>
+      <div id="prodModalTitle" class="confirm-title">เพิ่มสินค้าใหม่ (Product Master)</div>
       <div style="display:grid;gap:10px;margin:12px 0 18px;">
         <div class="modal-grid-2">
           <div class="field"><label for="npCo">บริษัท</label><select id="npCo"></select></div>
@@ -1472,6 +1472,22 @@
       <div class="confirm-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('productModal')">ยกเลิก</button>
         <button type="button" id="btnSaveProd" class="btn btn-primary btn-sm" onclick="submitNewProduct()">บันทึกสินค้า</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD LOT SERIALS MODAL -->
+  <div id="addSerialModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('addSerialModal')">
+    <div class="confirm-card" style="max-width:420px;">
+      <div class="confirm-title">เพิ่ม Serial Number เข้า Lot</div>
+      <div id="asSub" style="font-size:12px;color:var(--ink-muted);margin-top:2px;"></div>
+      <div style="display:grid;gap:10px;margin:12px 0 18px;">
+        <div class="field"><label for="asSerials">Serial Numbers (1 บรรทัดต่อ 1 เครื่อง หรือคั่นด้วยจุลภาค)</label><textarea id="asSerials" rows="3" placeholder="B26C-01239"></textarea></div>
+        <div class="field"><label for="asNote">หมายเหตุ (ถ้ามี)</label><input id="asNote" type="text" placeholder="เช่น Mfg 2026-03-17"></div>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('addSerialModal')">ยกเลิก</button>
+        <button type="button" id="btnSaveSerial" class="btn btn-primary btn-sm" onclick="submitAddLotSerials()">บันทึก Serial</button>
       </div>
     </div>
   </div>
@@ -3912,7 +3928,7 @@
               </div>
               <div style="text-align:right;">
                 <div class="num" style="font-size:20px;font-weight:800;color:${low ? "#b45309" : "var(--ink)"};">${p.totalStock} <span style="font-size:12px;font-weight:500;">${esc(p.unit)}</span></div>
-                ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="openReceiveModal('${escJsAttr(p.company)}','${escJsAttr(p.productNumber)}')">+ รับเข้า</button>` : ""}
+                ${isTeam ? `<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap;"><button type="button" class="btn btn-outline btn-sm" onclick="openProductModal('${escJsAttr(p.company)}','${escJsAttr(p.productNumber)}')">แก้ไข</button><button type="button" class="btn btn-outline btn-sm" onclick="openReceiveModal('${escJsAttr(p.company)}','${escJsAttr(p.productNumber)}')">+ รับเข้า</button></div>` : ""}
               </div>
             </article>`;
         }).join("") + `</div>`;
@@ -3931,6 +3947,7 @@
         }
         box.innerHTML = `<div class="doc-grid" style="grid-template-columns:1fr;">` + list.map(l => {
           const stCls = l.status === "Expired" ? "tag-invoice" : (l.status === "Expiring Soon" ? "tag-wht" : (l.status === "Active" ? "tag-receipt" : "co-pill"));
+          const lotSerCnt = (inv.serials || []).filter(s => s.lotId === l.lotId).length;
           return `
             <article class="doc-row-card">
               <div>
@@ -3945,7 +3962,7 @@
               </div>
               <div style="text-align:right;">
                 <div class="num" style="font-size:18px;font-weight:800;">${l.qtyRemaining} / ${l.qtyReceived}</div>
-                ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="openMoveStockModal('${escJsAttr(l.lotId)}')">เบิกออก / คืน</button>` : ""}
+                ${isTeam ? `<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap;">${lotSerCnt < l.qtyReceived ? `<button type="button" class="btn btn-outline btn-sm" onclick="openAddSerialModal('${escJsAttr(l.lotId)}')">+ ซีเรียล (${lotSerCnt}/${l.qtyReceived})</button>` : ""}<button type="button" class="btn btn-outline btn-sm" onclick="openMoveStockModal('${escJsAttr(l.lotId)}')">เบิกออก / คืน</button></div>` : ""}
               </div>
             </article>`;
         }).join("") + `</div>`;
@@ -3975,13 +3992,37 @@
       }).join("") + `</div>`;
     }
 
-    function openProductModal() {
+    let EDITING_PRODUCT = null;
+    let SERIAL_LOT_ID = "";
+
+    function openProductModal(preCo, preSku) {
       const list = (STATE.companies && STATE.companies.length) ? STATE.companies : [{ id: "Nontakarn" }, { id: "TIM Connection" }];
-      document.getElementById("npCo").innerHTML = list.map(c => `<option value="${esc(c.id)}">${esc(c.id)}</option>`).join("");
-      ["npSku", "npName", "npCat", "npCost", "npPrice"].forEach(id => document.getElementById(id).value = "");
-      document.getElementById("npUnit").value = "ชิ้น";
-      document.getElementById("npMin").value = "5";
-      document.getElementById("npMode").value = "Lot";
+      const coSel = document.getElementById("npCo");
+      const skuEl = document.getElementById("npSku");
+      coSel.innerHTML = list.map(c => `<option value="${esc(c.id)}">${esc(c.id)}</option>`).join("");
+      const prod = (preCo && preSku)
+        ? ((STATE.inventory && STATE.inventory.products) || []).find(x => x.company === preCo && x.productNumber === preSku)
+        : null;
+      EDITING_PRODUCT = prod || null;
+      document.getElementById("prodModalTitle").textContent = prod ? `แก้ไขสินค้า ${prod.productNumber}` : "เพิ่มสินค้าใหม่ (Product Master)";
+      coSel.disabled = Boolean(prod);
+      skuEl.disabled = Boolean(prod);
+      if (prod) {
+        coSel.value = prod.company;
+        skuEl.value = prod.productNumber;
+        document.getElementById("npName").value = prod.name || "";
+        document.getElementById("npCat").value = prod.category || "";
+        document.getElementById("npUnit").value = prod.unit || "ชิ้น";
+        document.getElementById("npMode").value = prod.trackingMode === "Lot+Serial" ? "Lot+Serial" : "Lot";
+        document.getElementById("npCost").value = prod.defaultCost != null ? prod.defaultCost : 0;
+        document.getElementById("npPrice").value = prod.defaultPrice != null ? prod.defaultPrice : 0;
+        document.getElementById("npMin").value = prod.minStock != null ? prod.minStock : 0;
+      } else {
+        ["npSku", "npName", "npCat", "npCost", "npPrice"].forEach(id => document.getElementById(id).value = "");
+        document.getElementById("npUnit").value = "ชิ้น";
+        document.getElementById("npMin").value = "5";
+        document.getElementById("npMode").value = "Lot";
+      }
       document.getElementById("btnSaveProd").disabled = false;
       document.getElementById("productModal").classList.remove("hidden");
     }
@@ -3992,23 +4033,57 @@
       if (!productNumber || !name) return toast("กรุณาระบุรหัสสินค้า (SKU) และชื่อสินค้า");
       const btn = document.getElementById("btnSaveProd");
       btn.disabled = true;
-      callApi("addProduct", "apiAddProduct", [SESSION_TOKEN, {
-          company: document.getElementById("npCo").value,
-          productNumber,
-          name,
-          category: document.getElementById("npCat").value,
-          unit: document.getElementById("npUnit").value,
-          trackingMode: document.getElementById("npMode").value,
-          defaultCost: document.getElementById("npCost").value,
-          defaultPrice: document.getElementById("npPrice").value,
-          minStock: document.getElementById("npMin").value
-        }], res => {
+      const isEdit = Boolean(EDITING_PRODUCT);
+      const payload = {
+        company: isEdit ? EDITING_PRODUCT.company : document.getElementById("npCo").value,
+        productNumber: isEdit ? EDITING_PRODUCT.productNumber : productNumber,
+        name,
+        category: document.getElementById("npCat").value,
+        unit: document.getElementById("npUnit").value,
+        trackingMode: document.getElementById("npMode").value,
+        defaultCost: document.getElementById("npCost").value,
+        defaultPrice: document.getElementById("npPrice").value,
+        minStock: document.getElementById("npMin").value
+      };
+      callApi(isEdit ? "updateProduct" : "addProduct", isEdit ? "apiUpdateProduct" : "apiAddProduct", [SESSION_TOKEN, payload], res => {
           btn.disabled = false;
-          if (!res || !res.ok) return handleApiError_(res, "เพิ่มสินค้าไม่สำเร็จ");
+          if (!res || !res.ok) return handleApiError_(res, isEdit ? "แก้ไขสินค้าไม่สำเร็จ" : "เพิ่มสินค้าไม่สำเร็จ");
           closeModal("productModal");
-          toast(`เพิ่มสินค้า ${res.productNumber} แล้ว`);
+          toast(isEdit ? `อัปเดตสินค้า ${res.productNumber} แล้ว` : `เพิ่มสินค้า ${res.productNumber} แล้ว`);
           loadData(false, true);
         }, err => { btn.disabled = false; toast(err.message); });
+    }
+
+    function openAddSerialModal(lotId) {
+      const inv = STATE.inventory || { lots: [], serials: [] };
+      const lot = (inv.lots || []).find(l => l.lotId === lotId);
+      if (!lot) return;
+      SERIAL_LOT_ID = lotId;
+      const used = (inv.serials || []).filter(s => s.lotId === lotId).length;
+      const avail = Math.max(0, lot.qtyReceived - used);
+      document.getElementById("asSub").textContent = `${lot.productNumber} · Lot ${lot.lotNumber} (${lotId}) · ว่าง ${avail} จาก ${lot.qtyReceived} เครื่อง`;
+      document.getElementById("asSerials").value = "";
+      document.getElementById("asNote").value = "";
+      document.getElementById("btnSaveSerial").disabled = false;
+      document.getElementById("addSerialModal").classList.remove("hidden");
+    }
+
+    function submitAddLotSerials() {
+      const serials = document.getElementById("asSerials").value.trim();
+      if (!SERIAL_LOT_ID || !serials) return toast("กรุณาระบุ Serial Number อย่างน้อย 1 รายการ");
+      const btn = document.getElementById("btnSaveSerial");
+      btn.disabled = true;
+      callApi("addLotSerials", "apiAddLotSerials", [SESSION_TOKEN, {
+        lotId: SERIAL_LOT_ID,
+        serials,
+        note: document.getElementById("asNote").value
+      }], res => {
+        btn.disabled = false;
+        if (!res || !res.ok) return handleApiError_(res, "เพิ่ม Serial ไม่สำเร็จ");
+        closeModal("addSerialModal");
+        toast(`เพิ่ม ${res.added} Serial เข้า ${res.lotId} แล้ว`);
+        loadData(false, true);
+      }, err => { btn.disabled = false; toast(err.message); });
     }
 
     function openReceiveModal(preCo, preSku) {
