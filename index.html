@@ -584,6 +584,15 @@
     .prj-step-card.prj-step-next { border-left-color: #2563eb; background: #f8fbff; }
     .prj-step-card.prj-step-skip { border-left-color: #cbd5e1; opacity: .68; background: #f8fafc; }
     .prj-doc-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 10px; border-radius: 8px; background: #f8fafc; border: 1px solid var(--border); font-size: 12.5px; }
+    .tpl-standard { background: #f0fdfa !important; color: #0f766e !important; border-color: #99f6e4 !important; }
+    .tpl-service_wht { background: #f5f3ff !important; color: #6d28d9 !important; border-color: #ddd6fe !important; }
+    .tpl-product_only { background: #eff6ff !important; color: #1d4ed8 !important; border-color: #bfdbfe !important; }
+    .tpl-procurement { background: #fffbeb !important; color: #b45309 !important; border-color: #fde68a !important; }
+    .prj-card-standard { border-left: 4px solid #0d9488; }
+    .prj-card-service_wht { border-left: 4px solid #7c3aed; }
+    .prj-card-product_only { border-left: 4px solid #2563eb; }
+    .prj-card-procurement { border-left: 4px solid #d97706; }
+    .cal-ev.prj-ev { font-weight: 700; border: 1px solid transparent; }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -1232,7 +1241,12 @@
           <div class="field"><label for="newPrjCust">ลูกค้า</label><input id="newPrjCust" type="text" placeholder="ชื่อลูกค้า / รพ."></div>
           <div class="field"><label for="newPrjDate">วันที่เริ่ม</label><input id="newPrjDate" type="date"></div>
         </div>
-        <div class="field"><label for="newPrjTemplate">รูปแบบขั้นตอนเอกสาร</label><select id="newPrjTemplate"><option value="standard">ขายสินค้า + ติดตั้ง (ครบ 6 ขั้นตอน)</option><option value="service_wht">งานบริการ / จ้างทำของ (เน้นหัก ณ ที่จ่าย 50 ทวิ)</option><option value="product_only">ขายสินค้าทั่วไป (ไม่ต้องมี 50 ทวิ)</option><option value="procurement">จัดซื้อ / จ้างผู้รับเหมา (ฝั่งรายจ่าย)</option></select></div>
+        <div class="field"><label for="newPrjTemplate">รูปแบบขั้นตอนเอกสาร</label><select id="newPrjTemplate"><option value="standard">Product + Install (ขายสินค้า + ติดตั้ง — 6 ขั้น)</option><option value="service_wht">Service (WHT) — งานบริการ / จ้างทำของ (เน้น 50 ทวิ)</option><option value="product_only">Product Sale — ขายสินค้าทั่วไป (ไม่มี 50 ทวิ)</option><option value="procurement">Procurement — จัดซื้อ / ผู้รับเหมา (ฝั่งรายจ่าย)</option></select></div>
+        <div class="modal-grid-3">
+          <div class="field"><label for="newPrjAppoint">วันนัดหมาย</label><input id="newPrjAppoint" type="date"></div>
+          <div class="field"><label for="newPrjWorkStart">เริ่มทำงาน</label><input id="newPrjWorkStart" type="date"></div>
+          <div class="field"><label for="newPrjWorkEnd">สิ้นสุดงาน</label><input id="newPrjWorkEnd" type="date"></div>
+        </div>
         <div class="field"><label for="newPrjNote">หมายเหตุ</label><input id="newPrjNote" type="text"></div>
       </div>
       <div class="confirm-actions">
@@ -2535,9 +2549,38 @@
       const todayYmd = formatYMD(new Date());
 
       const byDate = {};
-      STATE.schedules.forEach(s => {
+      (STATE.schedules || []).forEach(s => {
         if (!byDate[s.date]) byDate[s.date] = [];
-        byDate[s.date].push(s);
+        byDate[s.date].push({ ...s, kind: "schedule" });
+      });
+      (STATE.projects || []).forEach(p => {
+        if (p.status === "Cancelled") return;
+        const wf = p.workflow || {};
+        const tpl = wf.template || "standard";
+        if (wf.appointDate) {
+          if (!byDate[wf.appointDate]) byDate[wf.appointDate] = [];
+          byDate[wf.appointDate].push({
+            kind: "project", subKind: "appoint", date: wf.appointDate,
+            projectId: p.projectId, title: p.title, customer: p.customer, template: tpl,
+            rangeLabel: fmtDispDate(wf.appointDate)
+          });
+        }
+        if (wf.workStart) {
+          const endStr = (wf.workEnd && wf.workEnd >= wf.workStart) ? wf.workEnd : wf.workStart;
+          const rangeLabel = endStr === wf.workStart ? fmtDispDate(wf.workStart) : `${fmtDispDate(wf.workStart)} – ${fmtDispDate(endStr)}`;
+          const cur = new Date(wf.workStart + "T00:00:00");
+          const endDt = new Date(endStr + "T00:00:00");
+          for (let guard = 0; guard < 60 && cur <= endDt; guard++) {
+            const ymd = formatYMD(cur);
+            if (!byDate[ymd]) byDate[ymd] = [];
+            byDate[ymd].push({
+              kind: "project", subKind: "work", date: ymd,
+              projectId: p.projectId, title: p.title, customer: p.customer, template: tpl,
+              rangeLabel
+            });
+            cur.setDate(cur.getDate() + 1);
+          }
+        }
       });
 
       let html = "";
@@ -2556,6 +2599,10 @@
         const evs = byDate[ymd] || [];
         const cls = ["cal-cell", other ? "other" : "", ymd === todayYmd ? "today" : "", ymd === SELECTED_DATE ? "selected" : ""].join(" ");
         const pills = evs.slice(0, 3).map(e => {
+          if (e.kind === "project") {
+            const tag = e.subKind === "appoint" ? "นัด" : "งาน";
+            return `<div class="cal-ev prj-ev tpl-${esc(e.template)}" title="${esc(e.projectId + " " + e.title)}">${tag} · ${esc(e.title)}</div>`;
+          }
           const st = e.status === "สำเร็จ" ? "done" : (e.status === "ยกเลิก" ? "cancel" : "");
           return `<div class="cal-ev ${st}" title="${esc(e.task)}">${esc(e.time !== "-" ? e.time + " " : "")}${esc(e.task)}</div>`;
         }).join("") + (evs.length > 3 ? `<div class="doc-sub">+${evs.length - 3}</div>` : "");
@@ -2573,6 +2620,25 @@
         return;
       }
       box.innerHTML = events.map(e => {
+        if (e.kind === "project") {
+          const tplSpec = PROJECT_TEMPLATES[e.template] || PROJECT_TEMPLATES.standard;
+          const kindLabel = e.subKind === "appoint" ? "Appointment (วันนัด)" : "Work Period (ช่วงทำงาน)";
+          return `
+            <div class="ev-item prj-card-${esc(e.template)}">
+              <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+                <div>
+                  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
+                    <strong class="num" style="color:var(--brand);">${esc(e.projectId)}</strong>
+                    <span class="tag tpl-${esc(e.template)}">${esc(tplSpec.badge)}</span>
+                    <span class="tag">${kindLabel}</span>
+                  </div>
+                  <strong style="font-size:14px;">${esc(e.title)}</strong>
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="openProjectDetail('${escJsAttr(e.projectId)}')">Open Project →</button>
+              </div>
+              <div class="doc-sub" style="margin-top:4px;">ลูกค้า: ${esc(e.customer || "-")} · ${esc(e.rangeLabel)}</div>
+            </div>`;
+        }
         const badge = e.status === "สำเร็จ" ? "tag-ok" : (e.status === "ยกเลิก" ? "tag-err" : "tag-warn");
         const stEn = e.status === "สำเร็จ" ? "Done" : (e.status === "ยกเลิก" ? "Cancelled" : "Pending");
         return `
@@ -2876,13 +2942,18 @@
           <select style="width:auto;" onchange="changeProjectStatus('${escJsAttr(p.projectId)}', this.value)">
             ${["Active", "Completed", "Cancelled"].map(s => `<option value="${s}" ${p.status === s ? "selected" : ""}>${s}</option>`).join("")}
           </select>` : `<span class="tag tag-teal">${esc(p.status)}</span>`;
-        const prjStripe = p.status === "Active" ? "m-item-in" : (p.status === "Completed" ? "m-item-teal" : "m-item-slate");
+        const prjStripe = p.status === "Active" ? `prj-card-${pipe.wf.template}` : (p.status === "Completed" ? "m-item-teal" : "m-item-slate");
         const miniRail = pipe.steps.map((s, idx) => {
           const icon = s.state === "done" ? "✓" : (s.state === "next" ? "→" : (s.state === "skip" ? "–" : ""));
           const line = idx < pipe.steps.length - 1 ? `<span class="prj-mini-line ${s.state === "done" ? "done" : ""}"></span>` : "";
           return `<span class="prj-mini-dot ${s.state}">${icon ? icon + " " : ""}${esc(s.short)}</span>${line}`;
         }).join("");
         const tplSpec = PROJECT_TEMPLATES[pipe.wf.template] || PROJECT_TEMPLATES.standard;
+        const canDelete = isTeam && pipe.issued.length === 0 && pipe.logs.length === 0 && pipe.serials.length === 0;
+        const schedChips = [
+          pipe.wf.appointDate ? `<span>นัด: <strong class="num">${esc(fmtDispDate(pipe.wf.appointDate))}</strong></span>` : "",
+          pipe.wf.workStart ? `<span>ทำงาน: <strong class="num">${esc(fmtDispDate(pipe.wf.workStart))}${pipe.wf.workEnd && pipe.wf.workEnd !== pipe.wf.workStart ? " – " + esc(fmtDispDate(pipe.wf.workEnd)) : ""}</strong></span>` : ""
+        ].filter(Boolean).join(" · ");
         return `
           <article class="panel ${prjStripe}" style="display:grid;gap:10px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
@@ -2890,13 +2961,14 @@
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                   <strong class="num" style="color:var(--brand);">${esc(p.projectId)}</strong>
                   <span class="co-pill ${companyPillClass(p.company)}">${esc(p.company)}</span>
-                  <span class="tag tag-teal">${esc(tplSpec.badge)}</span>
+                  <span class="tag tpl-${esc(pipe.wf.template)}">${esc(tplSpec.badge)}</span>
                   <span style="font-size:12px;color:var(--ink-muted);" class="num">${esc(fmtDispDate(p.startDate))}</span>
                 </div>
                 <button type="button" onclick="openProjectDetail('${escJsAttr(p.projectId)}')" style="background:none;border:none;padding:2px 0;text-align:left;cursor:pointer;font-size:15.5px;font-weight:700;color:var(--ink);">${esc(p.title)}</button>
                 <div style="font-size:12.5px;color:var(--ink-muted);">ลูกค้า: ${esc(p.customer || "-")}${p.note ? " · " + esc(p.note) : ""}</div>
+                ${schedChips ? `<div style="font-size:12px;color:var(--ink-muted);margin-top:2px;">${schedChips}</div>` : ""}
               </div>
-              <div>${statusSel}</div>
+              <div style="display:flex;gap:6px;align-items:center;">${statusSel}</div>
             </div>
             <div class="prj-mini-rail">${miniRail}</div>
             <div style="font-size:12px;color:var(--ink-muted);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -2915,6 +2987,7 @@
               <span>Serial ส่งมอบ: <strong>${pipe.serials.length}</strong></span>
               <button type="button" class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openProjectDetail('${escJsAttr(p.projectId)}')">เปิดดูขั้นตอน & เอกสาร →</button>
               ${pipe.logs.length ? `<button type="button" class="btn btn-outline btn-sm" onclick="jumpToProjectBills('${escJsAttr(p.projectId)}')">ดูบิลทั้งหมด</button>` : ""}
+              ${canDelete ? `<button type="button" class="btn btn-danger btn-sm" onclick="confirmDeleteProject('${escJsAttr(p.projectId)}','${escJsAttr(p.title)}')">Delete</button>` : ""}
             </div>
           </article>`;
       }).join("");
@@ -3012,21 +3085,37 @@
       ).join("");
 
       const tplBadge = (PROJECT_TEMPLATES[pipe.wf.template] || PROJECT_TEMPLATES.standard).badge;
+      const canDeleteDetail = isTeam && pipe.issued.length === 0 && pipe.logs.length === 0 && pipe.serials.length === 0;
       body.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
           <div>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <strong class="num" style="color:var(--brand);">${esc(p.projectId)}</strong>
               <span class="co-pill ${companyPillClass(p.company)}">${esc(p.company)}</span>
-              <span class="tag tag-teal">${esc(tplBadge)}</span>
+              <span class="tag tpl-${esc(pipe.wf.template)}">${esc(tplBadge)}</span>
               <span class="tag tag-ok">${esc(p.status)}</span>
             </div>
             <div class="confirm-title" style="margin-top:4px;">${esc(p.title)}</div>
             <div style="font-size:12.5px;color:var(--ink-muted);">ลูกค้า: ${esc(p.customer || "-")}${p.note ? " · " + esc(p.note) : ""}</div>
           </div>
-          <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('projectDetailModal')">ปิด</button>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${canDeleteDetail ? `<button type="button" class="btn btn-danger btn-sm" onclick="confirmDeleteProject('${escJsAttr(p.projectId)}','${escJsAttr(p.title)}')">Delete</button>` : ""}
+            <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('projectDetailModal')">ปิด</button>
+          </div>
         </div>
-        ${isTeam ? `<div class="field" style="margin-bottom:10px;"><label for="prjDetailTpl">รูปแบบขั้นตอนเอกสาร</label><select id="prjDetailTpl" onchange="changeProjectTemplate('${escJsAttr(p.projectId)}', this.value)">${tplOpts}</select></div>` : ""}
+        ${isTeam ? `
+          <div class="panel" style="padding:10px;margin-bottom:10px;background:#f8fafc;display:grid;gap:8px;">
+            <div class="field"><label for="prjDetailTpl">รูปแบบขั้นตอนเอกสาร</label><select id="prjDetailTpl" onchange="changeProjectTemplate('${escJsAttr(p.projectId)}', this.value)">${tplOpts}</select></div>
+            <div class="modal-grid-3">
+              <div class="field"><label for="prjDetailAppoint">วันนัดหมาย</label><input id="prjDetailAppoint" type="date" value="${esc(pipe.wf.appointDate || "")}"></div>
+              <div class="field"><label for="prjDetailWorkStart">เริ่มทำงาน</label><input id="prjDetailWorkStart" type="date" value="${esc(pipe.wf.workStart || "")}"></div>
+              <div class="field"><label for="prjDetailWorkEnd">สิ้นสุดงาน</label><input id="prjDetailWorkEnd" type="date" value="${esc(pipe.wf.workEnd || "")}"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:11.5px;color:var(--ink-muted);">ซิงค์เข้าแท็บปฏิทินตารางงานอัตโนมัติ</span>
+              <button type="button" class="btn btn-outline btn-sm" onclick="saveProjectDates('${escJsAttr(p.projectId)}')">บันทึกวันนัด/ทำงาน</button>
+            </div>
+          </div>` : ""}
         <div class="prj-stepper">${railHtml}</div>
         <div style="display:grid;gap:8px;">${stepsHtml}</div>
         ${otherHtml}
@@ -3038,19 +3127,31 @@
       if (p) p.workflow = nextWf;
       renderProjectDetail();
       renderProjects();
+      renderCalendar();
       callApi("updateProjectWorkflow", "apiUpdateProjectWorkflow", [SESSION_TOKEN, projectId, nextWf], res => {
           if (!res || !res.ok) return handleApiError_(res, "บันทึกขั้นตอนไม่สำเร็จ");
           if (p && res.workflow) p.workflow = res.workflow;
-          toast("บันทึกขั้นตอนโปรเจกต์แล้ว");
+          toast("บันทึกข้อมูลโปรเจกต์แล้ว");
         }, err => toast(err.message));
+    }
+
+    function saveProjectDates(projectId) {
+      const p = (STATE.projects || []).find(x => x.projectId === projectId);
+      if (!p) return;
+      const wf = p.workflow || { template: "standard", skipped: [], manualDone: [] };
+      const appointDate = document.getElementById("prjDetailAppoint").value;
+      const workStart = document.getElementById("prjDetailWorkStart").value;
+      let workEnd = document.getElementById("prjDetailWorkEnd").value;
+      if (workStart && workEnd && workEnd < workStart) workEnd = workStart;
+      saveProjectWorkflow(projectId, { ...wf, appointDate, workStart, workEnd });
     }
 
     function changeProjectTemplate(projectId, tpl) {
       const p = (STATE.projects || []).find(x => x.projectId === projectId);
       if (!p) return;
       const spec = PROJECT_TEMPLATES[tpl] || PROJECT_TEMPLATES.standard;
-      const curManual = (p.workflow && p.workflow.manualDone) || [];
-      saveProjectWorkflow(projectId, { template: tpl, skipped: [...spec.skipped], manualDone: [...curManual] });
+      const wf = p.workflow || {};
+      saveProjectWorkflow(projectId, { ...wf, template: tpl, skipped: [...spec.skipped], manualDone: wf.manualDone || [] });
     }
 
     function toggleProjectStepSkip(projectId, stepKey) {
@@ -3059,7 +3160,7 @@
       const wf = p.workflow || { template: "standard", skipped: [], manualDone: [] };
       const skipped = new Set(wf.skipped || []);
       if (skipped.has(stepKey)) skipped.delete(stepKey); else skipped.add(stepKey);
-      saveProjectWorkflow(projectId, { template: wf.template || "standard", skipped: Array.from(skipped), manualDone: wf.manualDone || [] });
+      saveProjectWorkflow(projectId, { ...wf, template: wf.template || "standard", skipped: Array.from(skipped), manualDone: wf.manualDone || [] });
     }
 
     function toggleProjectStepDone(projectId, stepKey) {
@@ -3068,7 +3169,18 @@
       const wf = p.workflow || { template: "standard", skipped: [], manualDone: [] };
       const md = new Set(wf.manualDone || []);
       if (md.has(stepKey)) md.delete(stepKey); else md.add(stepKey);
-      saveProjectWorkflow(projectId, { template: wf.template || "standard", skipped: wf.skipped || [], manualDone: Array.from(md) });
+      saveProjectWorkflow(projectId, { ...wf, template: wf.template || "standard", skipped: wf.skipped || [], manualDone: Array.from(md) });
+    }
+
+    function confirmDeleteProject(projectId, title) {
+      openConfirm("ลบโปรเจกต์?", `ยืนยันลบ ${projectId} (${title}) ออกจากระบบ? (ลบได้เฉพาะโปรเจกต์ที่ยังไม่มีเอกสาร/บิล/สต็อกผูกอยู่)`, "Delete", () => {
+        callApi("deleteProject", "apiDeleteProject", [SESSION_TOKEN, projectId], res => {
+          if (!res || !res.ok) return handleApiError_(res, "ลบโปรเจกต์ไม่สำเร็จ");
+          closeModal("projectDetailModal");
+          toast(`ลบโปรเจกต์ ${projectId} แล้ว`);
+          loadData();
+        }, err => toast(err.message));
+      }, true);
     }
 
     function openProjectModal() {
@@ -3078,6 +3190,9 @@
       document.getElementById("newPrjCust").value = "";
       document.getElementById("newPrjDate").value = formatYMD(new Date());
       document.getElementById("newPrjTemplate").value = "standard";
+      document.getElementById("newPrjAppoint").value = "";
+      document.getElementById("newPrjWorkStart").value = "";
+      document.getElementById("newPrjWorkEnd").value = "";
       document.getElementById("newPrjNote").value = "";
       document.getElementById("btnSavePrj").disabled = false;
       document.getElementById("projectModal").classList.remove("hidden");
@@ -3094,6 +3209,9 @@
           customer: document.getElementById("newPrjCust").value,
           startDate: document.getElementById("newPrjDate").value,
           workflowTemplate: document.getElementById("newPrjTemplate").value,
+          appointDate: document.getElementById("newPrjAppoint").value,
+          workStart: document.getElementById("newPrjWorkStart").value,
+          workEnd: document.getElementById("newPrjWorkEnd").value,
           note: document.getElementById("newPrjNote").value
         }], res => {
           btn.disabled = false;
