@@ -65,6 +65,18 @@
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
     }
+    body.modal-open { overflow: hidden; }
+    .top-sync-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 60;
+      background: linear-gradient(90deg, transparent, #10b981, #0f3d34, transparent);
+      background-size: 200% 100%; animation: shimmer 1.1s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes tabFadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    main > section:not(.hidden) { animation: tabFadeIn 160ms var(--ease-out); }
 
     /* Custom Scrollbars */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -130,7 +142,7 @@
       color: var(--sidebar-text);
       position: sticky; top: 0; height: 100vh;
       display: flex; flex-direction: column; padding: 18px 14px;
-      border-right: 1px solid rgba(0, 0, 0, .15); z-index: 35;
+      border-right: 1px solid rgba(0, 0, 0, .15); z-index: 35; overscroll-behavior: contain;
     }
     .sidebar .brand-mark {
       background: rgba(16, 185, 129, .2); border: 1px solid rgba(52, 211, 153, .35);
@@ -539,6 +551,7 @@
       position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #f7f6f2;
       padding: 12px 18px; border-radius: 12px; font-size: 13.5px; font-weight: 500;
       z-index: 220; box-shadow: var(--shadow-lg); max-width: calc(100vw - 32px);
+      animation: modalIn 160ms var(--ease-out);
     }
 
     .modal-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -625,7 +638,7 @@
     }
     #confirmModal { z-index: 300; }
     .confirm-card {
-      width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto;
+      width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; overscroll-behavior: contain;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--radius-lg); padding: 22px; box-shadow: var(--shadow-lg);
       animation: modalIn 180ms var(--ease-out);
@@ -747,6 +760,7 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+  <div id="topSyncBar" class="top-sync-bar hidden" aria-hidden="true"></div>
   <!-- LOADING SKELETON -->
   <div id="loadingView" class="center-wrap">
     <div class="state-card">
@@ -788,7 +802,7 @@
         <div style="margin-top:10px;display:grid;gap:8px;">
           <div style="font-size:12px;color:var(--ink-muted);">พิมพ์คำว่า <strong>เข้าเว็บ</strong> ใน LINE OA เพื่อรับรหัส 6 หลัก (ใช้ได้ 5 นาที)</div>
           <div style="display:flex;gap:6px;">
-            <input id="otpCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="รหัส 6 หลัก" style="text-align:center;font-weight:700;letter-spacing:3px;">
+            <input id="otpCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="รหัส 6 หลัก" onkeydown="if(event.key==='Enter')loginWithOtpCode()" style="text-align:center;font-weight:700;letter-spacing:3px;">
             <button id="btnOtpLogin" type="button" class="btn btn-primary btn-sm" onclick="loginWithOtpCode()" style="white-space:nowrap;">เข้าสู่ระบบ</button>
           </div>
         </div>
@@ -915,7 +929,7 @@
           <div class="filter-row">
             <div class="search-wrap">
               <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="expSearch" type="search" placeholder="ค้นหาร้าน, ผู้รับ, REC-..." oninput="renderExpenses()">
+              <input id="expSearch" type="search" placeholder="ค้นหาร้าน, ผู้รับ, REC-..." oninput="debouncedRender('exp', renderExpenses)">
             </div>
             <button id="expFilterBtn" type="button" class="btn btn-outline btn-sm" aria-expanded="false" onclick="toggleDrawer('expDrawer', 'expFilterBtn')">
               <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
@@ -982,7 +996,7 @@
             <div class="filter-row" style="flex-wrap:wrap;">
               <div class="search-wrap">
                 <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input id="issSearch" type="search" placeholder="ค้นหาเลขเอกสาร QT/PO/IV/TX/RC, ลูกค้า, โปรเจกต์..." oninput="renderIssuedDocs()">
+                <input id="issSearch" type="search" placeholder="ค้นหาเลขเอกสาร QT/PO/IV/TX/RC, ลูกค้า, โปรเจกต์..." oninput="debouncedRender('iss', renderIssuedDocs)">
               </div>
               <select id="issCompany" style="width:auto;min-width:140px;" onchange="renderIssuedDocs()"></select>
               <select id="issType" style="width:auto;min-width:145px;" onchange="renderIssuedDocs()">
@@ -1020,7 +1034,7 @@
               </select>
               <div class="search-wrap">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input id="verifySearch" type="search" placeholder="ค้นหาในคิวตรวจ..." oninput="renderVerify()">
+                <input id="verifySearch" type="search" placeholder="ค้นหาในคิวตรวจ..." oninput="debouncedRender('ver', renderVerify)">
               </div>
             </div>
           </div>
@@ -1058,7 +1072,7 @@
           <div class="panel">
             <div class="search-wrap">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="companySearch" type="search" placeholder="ค้นหาไทย/อังกฤษ เช่น บัตรประชาชน, id card, ภพ20, vat, bank, logo, car..." oninput="renderCompanyDocs()">
+              <input id="companySearch" type="search" placeholder="ค้นหาไทย/อังกฤษ เช่น บัตรประชาชน, id card, ภพ20, vat, bank, logo, car..." oninput="debouncedRender('co', renderCompanyDocs)">
             </div>
           </div>
           <div id="companyGrid" class="doc-grid"></div>
@@ -1073,7 +1087,7 @@
             <div class="filter-row">
               <div class="search-wrap">
                 <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input id="otherSearch" type="search" placeholder="ค้นหาสัญญา, HR, ชื่อไฟล์..." oninput="renderOtherDocs()">
+                <input id="otherSearch" type="search" placeholder="ค้นหาสัญญา, HR, ชื่อไฟล์..." oninput="debouncedRender('oth', renderOtherDocs)">
               </div>
               <button id="otherFilterBtn" type="button" class="btn btn-outline btn-sm" aria-expanded="false" onclick="toggleDrawer('otherDrawer', 'otherFilterBtn')">
                 <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
@@ -1136,7 +1150,7 @@
             <div class="filter-row" style="flex-wrap:wrap;">
               <div class="search-wrap">
                 <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input id="prjSearch" type="search" placeholder="ค้นหารหัส PRJ-, ชื่อโปรเจกต์, ลูกค้า..." oninput="renderProjects()">
+                <input id="prjSearch" type="search" placeholder="ค้นหารหัส PRJ-, ชื่อโปรเจกต์, ลูกค้า..." oninput="debouncedRender('prj', renderProjects)">
               </div>
               <select id="prjCompany" style="width:auto;min-width:145px;" onchange="renderProjects()"></select>
               <select id="prjStatus" style="width:auto;min-width:125px;" onchange="renderProjects()">
@@ -1220,7 +1234,7 @@
           <div class="filter-row">
             <div class="search-wrap">
               <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="invSearch" type="search" placeholder="ค้นหา Product Number, ชื่อสินค้า, เลข Lot, Serial Number..." oninput="renderInventory()">
+              <input id="invSearch" type="search" placeholder="ค้นหา Product Number, ชื่อสินค้า, เลข Lot, Serial Number..." oninput="debouncedRender('inv', renderInventory)">
             </div>
           </div>
         </div>
@@ -1241,7 +1255,7 @@
           <div class="filter-row">
             <div class="search-wrap">
               <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="cpSearch" type="search" placeholder="ค้นหาชื่อไทย/อังกฤษ, ชื่อย่อ, เลขผู้เสียภาษี, สาขา..." oninput="renderCounterparties()">
+              <input id="cpSearch" type="search" placeholder="ค้นหาชื่อไทย/อังกฤษ, ชื่อย่อ, เลขผู้เสียภาษี, สาขา..." oninput="debouncedRender('cp', renderCounterparties)">
             </div>
             <select id="cpRoleFilter" style="width:auto;min-width:120px;" aria-label="ประเภทคู่ค้า" onchange="renderCounterparties()">
               <option value="">ทุกประเภท</option>
@@ -1684,14 +1698,26 @@
       const isPublic = action === "config" || action === "loginGoogle" || action === "loginCode";
       const reqToken = isPublic ? "" : String(rawArgs[0] || SESSION_TOKEN || "");
       const reqArgs = isPublic ? rawArgs : rawArgs.slice(1);
+      const longActions = ["uploadDocument", "createIssuedDoc", "syncDrivePermissions"];
+      const timeoutMs = longActions.includes(action) ? 65000 : 30000;
+      const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
       fetch(PORTAL_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ _portalApi: true, action, token: reqToken, args: reqArgs })
+        body: JSON.stringify({ _portalApi: true, action, token: reqToken, args: reqArgs }),
+        signal: ctrl ? ctrl.signal : undefined
       })
         .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
         .then(res => { if (onOk) onOk(res); })
-        .catch(err => { if (onErr) onErr(err); });
+        .catch(err => {
+          if (err && err.name === "AbortError") {
+            if (onErr) onErr(new Error("การเชื่อมต่อหมดเวลา กรุณาลองใหม่"));
+            return;
+          }
+          if (onErr) onErr(err);
+        })
+        .finally(() => { if (timer) clearTimeout(timer); });
     }
 
     const FINANCE_TYPES = [
@@ -1803,6 +1829,12 @@
       return esc(String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " "));
     }
 
+    const _debounceTimers = {};
+    function debouncedRender(key, fn, ms = 120) {
+      clearTimeout(_debounceTimers[key]);
+      _debounceTimers[key] = setTimeout(fn, ms);
+    }
+
     function toast(msg) {
       const el = document.getElementById("toast");
       el.textContent = msg;
@@ -1814,6 +1846,7 @@
     function handleApiError_(res, fallbackMsg) {
       const err = (res && res.error) ? String(res.error) : "";
       if (err === "UNAUTHORIZED") {
+        clearPortalCache_();
         SESSION_TOKEN = "";
         saveTok("");
         showAuthView("เซสชันหมดอายุ กรุณาเข้าสู่ระบบด้วย Google ใหม่อีกครั้ง");
@@ -1824,7 +1857,7 @@
 
     function authDriveUrl(url) {
       const raw = String(url || "").trim();
-      if (!raw) return "";
+      if (!raw || !/^https?:\/\//i.test(raw)) return "";
       const email = STATE && STATE.user && STATE.user.email ? String(STATE.user.email).trim() : "";
       if (!email || !/^https:\/\/(drive|docs)\.google\.com\//i.test(raw)) return raw;
       if (/[?&]authuser=/i.test(raw)) return raw;
@@ -1872,8 +1905,7 @@
       if (GSI_INIT_DONE) return;
       const wrap = document.getElementById("gsiBtnWrap");
       if (!wrap) return;
-      callApi("config", "apiGetPublicConfig", [], res => {
-        const cid = res && res.googleClientId;
+      const mountWithCid = cid => {
         if (!cid) return;
         const mount = () => {
           if (!(window.google && google.accounts && google.accounts.id)) {
@@ -1894,13 +1926,23 @@
                 }
                 SESSION_TOKEN = loginRes.token;
                 saveTok(SESSION_TOKEN);
-                loadData(false);
+                loadData(false, true);
               }, err => showAuthView("เข้าสู่ระบบไม่สำเร็จ: " + err.message));
             }
           });
           google.accounts.id.renderButton(wrap, { theme: "filled_blue", size: "large", width: 280, text: "signin_with" });
         };
         mount();
+      };
+      let cachedCid = "";
+      try { cachedCid = sessionStorage.getItem("nk_gci_v1") || ""; } catch (_) {}
+      if (cachedCid) return mountWithCid(cachedCid);
+      callApi("config", "apiGetPublicConfig", [], res => {
+        const cid = res && res.googleClientId;
+        if (cid) {
+          try { sessionStorage.setItem("nk_gci_v1", cid); } catch (_) {}
+          mountWithCid(cid);
+        }
       }, () => {});
     }
 
@@ -1918,22 +1960,114 @@
         saveTok(SESSION_TOKEN);
         document.getElementById("loadingView").classList.remove("hidden");
         document.getElementById("authView").classList.add("hidden");
-        loadData(false);
+        loadData(false, true);
       }, err => {
         if (btn) { btn.disabled = false; btn.textContent = "เข้าสู่ระบบ"; }
         toast(err.message || "เกิดข้อผิดพลาด");
       });
     }
 
+    const PORTAL_CACHE_KEY = "nk_portal_cache_v1";
+    let _loadInFlight = false;
+
+    function readPortalCache_() {
+      if (!SESSION_TOKEN) return null;
+      try {
+        const raw = sessionStorage.getItem(PORTAL_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.tok !== SESSION_TOKEN.slice(0, 12) || !parsed.data || !parsed.data.ok) return null;
+        return parsed;
+      } catch (_) { return null; }
+    }
+
+    function syncPortalCache_() {
+      if (!SESSION_TOKEN || !STATE || !STATE.ok) return;
+      try {
+        sessionStorage.setItem(PORTAL_CACHE_KEY, JSON.stringify({
+          tok: SESSION_TOKEN.slice(0, 12),
+          ts: Date.now(),
+          data: STATE
+        }));
+      } catch (_) {}
+    }
+
+    function clearPortalCache_() {
+      try { sessionStorage.removeItem(PORTAL_CACHE_KEY); } catch (_) {}
+    }
+
+    function refreshBadgesAndPulse_() {
+      const isAdmin = STATE && STATE.user && String(STATE.user.role || "").toLowerCase() === "admin";
+      const openVerifyCount = ((STATE && STATE.logs) || []).filter(l => (l.verifyStatus || "Pending Review") !== "Verified").length;
+      ["verifyCountBadge", "mobVerifyCountBadge", "subVerifyCountBadge"].forEach(bid => {
+        const bEl = document.getElementById(bid);
+        if (!bEl) return;
+        bEl.textContent = openVerifyCount > 99 ? "99+" : String(openVerifyCount);
+        bEl.classList.toggle("hidden", !isAdmin || openVerifyCount === 0);
+      });
+      renderTodayPulse();
+    }
+
+    function applyPortalState_(res) {
+      STATE = res;
+      document.getElementById("authView").classList.add("hidden");
+      document.getElementById("appView").classList.remove("hidden");
+      document.getElementById("uiUserName").textContent = res.user.name;
+      document.getElementById("uiUserRole").textContent = res.user.role;
+
+      const isAdmin = String(res.user.role || "").toLowerCase() === "admin";
+      const isTeam = ["admin", "manager", "management"].includes(String(res.user.role || "").toLowerCase());
+      const subVerifyBtn = document.getElementById("subTabVerify");
+      if (subVerifyBtn) subVerifyBtn.classList.toggle("hidden", !isAdmin);
+      document.getElementById("btnAddProject").classList.toggle("hidden", !isTeam);
+      document.getElementById("invAdminBtns").classList.toggle("hidden", !isTeam);
+      document.getElementById("btnNewIssueDoc").classList.toggle("hidden", !isTeam);
+      document.getElementById("btnAddPartner").classList.toggle("hidden", !isTeam);
+
+      const curMonthYM = formatYMD(new Date()).slice(0, 7);
+      const expMonthEl = document.getElementById("expMonth");
+      if (!expMonthEl.dataset.initialized) {
+        expMonthEl.value = curMonthYM;
+        expMonthEl.dataset.initialized = "1";
+      }
+
+      populateCompanyDropdown("expCompany", res.companies || []);
+      populateCompanyDropdown("prjCompany", res.companies || [], false);
+      populateCompanyDropdown("invCompany", res.companies || [], false);
+      populateCompanyDropdown("issCompany", res.companies || [], false);
+      populateTypeDropdown("expType", FINANCE_TYPES, getFinanceLogs(), "ทุกหมวดการเงิน");
+      populateTypeDropdown("otherType", OTHER_TYPES, getOtherLogs(), "ทุกประเภทเอกสาร");
+      populateEmpSelect("expEmp", getFinanceLogs());
+      populateEmpSelect("otherEmp", getOtherLogs());
+      renderCompanyDocs();
+      updateEraBtn_();
+      renderExpenses();
+      renderProjects();
+      if (typeof OPEN_PROJECT_DETAIL_ID !== "undefined" && OPEN_PROJECT_DETAIL_ID) {
+        const pdm = document.getElementById("projectDetailModal");
+        if (pdm && !pdm.classList.contains("hidden")) renderProjectDetail();
+      }
+      renderInventory();
+      renderIssuedDocs();
+      renderCounterparties();
+      renderOtherDocs();
+      renderCalendar();
+      refreshBadgesAndPulse_();
+      if (isAdmin) renderVerify();
+      restoreNavState_();
+    }
+
     function logout() {
       const tok = SESSION_TOKEN;
+      clearPortalCache_();
       SESSION_TOKEN = "";
       saveTok("");
+      STATE = { user: null, companyDocs: [], logs: [], schedules: [], projects: [], inventory: { products: [], lots: [], serials: [] }, issuedDocs: [] };
       if (tok) callApi("logout", "apiLogout", [tok], () => {}, () => {});
       showAuthView("");
     }
 
-    function loadData(isManual = false) {
+    function loadData(isManual = false, forceFetch = false) {
       if (AUTH_ERROR && !INITIAL_TOKEN) {
         SESSION_TOKEN = "";
         saveTok("");
@@ -1945,95 +2079,72 @@
         return;
       }
       saveTok(SESSION_TOKEN);
+
+      const syncBar = document.getElementById("topSyncBar");
+      let isBgRevalidate = false;
+      if (!isManual && !forceFetch) {
+        const cached = readPortalCache_();
+        if (cached) {
+          const age = Date.now() - (cached.ts || 0);
+          if (age < 120000) {
+            document.getElementById("loadingView").classList.add("hidden");
+            applyPortalState_(cached.data);
+            if (age < 30000) return;
+            isBgRevalidate = true;
+          }
+        }
+      }
+
+      if (_loadInFlight) return;
+      _loadInFlight = true;
+      if (isBgRevalidate && syncBar) syncBar.classList.remove("hidden");
+
       const refBtn = document.getElementById("btnRefresh");
-      if (refBtn) {
+      if (refBtn && !isBgRevalidate) {
         refBtn.disabled = true;
         const sp = refBtn.querySelector("span");
         if (sp) sp.textContent = "กำลังโหลด...";
       }
       const restoreRefreshBtn = () => {
+        if (syncBar) syncBar.classList.add("hidden");
         if (!refBtn) return;
         refBtn.disabled = false;
         const sp = refBtn.querySelector("span");
         if (sp) sp.textContent = "รีเฟรช";
       };
       clearTimeout(window._loadWatchdog);
-      window._loadWatchdog = setTimeout(() => {
-        const lv = document.getElementById("loadingView");
-        const av = document.getElementById("appView");
-        if (lv && !lv.classList.contains("hidden") && av && av.classList.contains("hidden")) {
-          restoreRefreshBtn();
-          showAuthView("เชื่อมต่อเซิร์ฟเวอร์นานเกินไป กรุณากดเข้าสู่ระบบหรือรีเฟรชอีกครั้ง");
-        }
-      }, 20000);
+      if (!isBgRevalidate) {
+        window._loadWatchdog = setTimeout(() => {
+          const lv = document.getElementById("loadingView");
+          const av = document.getElementById("appView");
+          if (lv && !lv.classList.contains("hidden") && av && av.classList.contains("hidden")) {
+            _loadInFlight = false;
+            restoreRefreshBtn();
+            showAuthView("เชื่อมต่อเซิร์ฟเวอร์นานเกินไป กรุณากดเข้าสู่ระบบหรือรีเฟรชอีกครั้ง");
+          }
+        }, 20000);
+      }
       callApi("getPortalData", "apiGetPortalData", [SESSION_TOKEN], res => {
+          _loadInFlight = false;
           clearTimeout(window._loadWatchdog);
           restoreRefreshBtn();
           document.getElementById("loadingView").classList.add("hidden");
           if (!res || !res.ok) {
+            if (isBgRevalidate && res && res.error !== "UNAUTHORIZED") return;
+            clearPortalCache_();
             saveTok("");
             SESSION_TOKEN = "";
             showAuthView(AUTH_ERROR || (res && res.error === "UNAUTHORIZED" ? "เซสชันหมดอายุ กรุณาเข้าสู่ระบบด้วย Google ใหม่อีกครั้ง" : (res && res.error) || ""));
             return;
           }
-          STATE = res;
-          document.getElementById("authView").classList.add("hidden");
-          document.getElementById("appView").classList.remove("hidden");
-          document.getElementById("uiUserName").textContent = res.user.name;
-          document.getElementById("uiUserRole").textContent = res.user.role;
-
-          const isAdmin = String(res.user.role || "").toLowerCase() === "admin";
-          const isTeam = ["admin", "manager", "management"].includes(String(res.user.role || "").toLowerCase());
-          const subVerifyBtn = document.getElementById("subTabVerify");
-          if (subVerifyBtn) subVerifyBtn.classList.toggle("hidden", !isAdmin);
-          document.getElementById("btnAddProject").classList.toggle("hidden", !isTeam);
-          document.getElementById("invAdminBtns").classList.toggle("hidden", !isTeam);
-          document.getElementById("btnNewIssueDoc").classList.toggle("hidden", !isTeam);
-          document.getElementById("btnAddPartner").classList.toggle("hidden", !isTeam);
-
-          const openVerifyCount = (res.logs || []).filter(l => (l.verifyStatus || "Pending Review") !== "Verified").length;
-          ["verifyCountBadge", "mobVerifyCountBadge", "subVerifyCountBadge"].forEach(bid => {
-            const bEl = document.getElementById(bid);
-            if (!bEl) return;
-            bEl.textContent = openVerifyCount > 99 ? "99+" : String(openVerifyCount);
-            bEl.classList.toggle("hidden", !isAdmin || openVerifyCount === 0);
-          });
-
-          const curMonthYM = formatYMD(new Date()).slice(0, 7);
-          const expMonthEl = document.getElementById("expMonth");
-          if (!expMonthEl.dataset.initialized) {
-            expMonthEl.value = curMonthYM;
-            expMonthEl.dataset.initialized = "1";
-          }
-
-          populateCompanyDropdown("expCompany", res.companies || []);
-          populateCompanyDropdown("prjCompany", res.companies || [], false);
-          populateCompanyDropdown("invCompany", res.companies || [], false);
-          populateCompanyDropdown("issCompany", res.companies || [], false);
-          populateTypeDropdown("expType", FINANCE_TYPES, getFinanceLogs(), "ทุกหมวดการเงิน");
-          populateTypeDropdown("otherType", OTHER_TYPES, getOtherLogs(), "ทุกประเภทเอกสาร");
-          populateEmpSelect("expEmp", getFinanceLogs());
-          populateEmpSelect("otherEmp", getOtherLogs());
-          renderCompanyDocs();
-          updateEraBtn_();
-          renderExpenses();
-          renderProjects();
-          if (typeof OPEN_PROJECT_DETAIL_ID !== "undefined" && OPEN_PROJECT_DETAIL_ID) {
-            const pdm = document.getElementById("projectDetailModal");
-            if (pdm && !pdm.classList.contains("hidden")) renderProjectDetail();
-          }
-          renderInventory();
-          renderIssuedDocs();
-          renderCounterparties();
-          renderOtherDocs();
-          renderCalendar();
-          renderTodayPulse();
-          if (isAdmin) renderVerify();
-          restoreNavState_();
+          applyPortalState_(res);
+          syncPortalCache_();
           if (isManual) toast("อัปเดตข้อมูลล่าสุดแล้ว");
         }, err => {
+          _loadInFlight = false;
           clearTimeout(window._loadWatchdog);
           restoreRefreshBtn();
+          if (isBgRevalidate) return;
           if (document.getElementById("appView").classList.contains("hidden")) {
             showAuthView("โหลดข้อมูลไม่สำเร็จ: " + (err && err.message ? err.message : "Network error"));
           } else {
@@ -2134,7 +2245,7 @@
         if (String(l.countCashflow || "Yes") === "No") return;
         const ym = String(l.docDate || String(l.date || "").slice(0, 10)).slice(0, 7);
         if (ym !== curYM) return;
-        const a = parseFloat(l.amt) || 0;
+        const a = parseAmt(l.amt);
         if (l.flow === "รายรับ") inc += a;
         else exp += a;
       });
@@ -2286,7 +2397,7 @@
               <span class="tag tag-teal">สิทธิ์: ${esc(d.allowedRoles)}</span>
             </div>
           </div>
-          <a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(d.url))}" target="_blank" rel="noopener"><span>เปิดไฟล์ใน Drive</span>${EXT_ICON}</a>
+          <a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(d.url))}" target="_blank" rel="noopener noreferrer"><span>เปิดไฟล์ใน Drive</span>${EXT_ICON}</a>
         </article>
       `).join("");
     }
@@ -2338,15 +2449,32 @@
 
     document.addEventListener("keydown", e => {
       if (e.key !== "Escape") return;
-      if (!document.getElementById("confirmModal").classList.contains("hidden")) closeConfirm();
-      if (!document.getElementById("editLogModal").classList.contains("hidden")) closeEditLog();
-      const moreEl = document.getElementById("moreSheetModal");
-      if (moreEl && !moreEl.classList.contains("hidden") && typeof closeMoreSheet === "function") closeMoreSheet();
-      ["uploadDocModal", "projectModal", "productModal", "receiveModal", "moveStockModal", "issueDocModal", "counterpartyModal"].forEach(id => {
+      const order = ["confirmModal", "relinkDocModal", "editLogModal", "projectDetailModal", "moreSheetModal", "uploadDocModal", "projectModal", "productModal", "receiveModal", "moveStockModal", "issueDocModal", "counterpartyModal"];
+      for (const id of order) {
         const el = document.getElementById(id);
-        if (el && !el.classList.contains("hidden")) closeModal(id);
-      });
+        if (!el || el.classList.contains("hidden")) continue;
+        if (id === "confirmModal") closeConfirm();
+        else if (id === "editLogModal") closeEditLog();
+        else if (id === "moreSheetModal" && typeof closeMoreSheet === "function") closeMoreSheet();
+        else closeModal(id);
+        return;
+      }
     });
+
+    document.addEventListener("click", e => {
+      const t = e.target;
+      if (!t || !t.classList || !t.classList.contains("confirm-backdrop")) return;
+      if (t.id === "confirmModal") closeConfirm();
+      else if (t.id === "editLogModal") closeEditLog();
+      else if (t.id) closeModal(t.id);
+    });
+
+    (function initModalScrollLock_() {
+      const sync = () => document.body.classList.toggle("modal-open", !!document.querySelector(".confirm-backdrop:not(.hidden), .sheet-backdrop:not(.hidden)"));
+      if (typeof MutationObserver === "undefined") return;
+      const obs = new MutationObserver(sync);
+      document.querySelectorAll(".confirm-backdrop, .sheet-backdrop").forEach(el => obs.observe(el, { attributes: true, attributeFilter: ["class"] }));
+    })();
 
     let EDITING_LOG = null;
     let LAST_FILTERED_EXP = [];
@@ -2398,9 +2526,22 @@
       callApi("updateLogMeta", "apiUpdateLogMeta", [SESSION_TOKEN, EDITING_LOG.receiptId, EDITING_LOG.row, newFlow, newCo, extra], res => {
           btn.disabled = false;
           if (!res || !res.ok) return handleApiError_(res, "บันทึกไม่สำเร็จ");
+          EDITING_LOG.company = newCo;
+          EDITING_LOG.flow = newFlow;
+          if (extra.docDate) EDITING_LOG.docDate = extra.docDate;
+          EDITING_LOG.projectId = extra.projectId;
+          EDITING_LOG.countCashflow = extra.countCashflow;
+          EDITING_LOG.vendor = extra.vendor;
+          EDITING_LOG.fromTo = extra.fromTo;
+          EDITING_LOG.amt = extra.amount;
+          EDITING_LOG.sum = extra.summary;
           closeEditLog();
           toast(res.movedToDrive ? `บันทึกและย้ายไฟล์ไป ${res.movedToDrive} แล้ว` : "บันทึกการแก้ไขแล้ว");
-          loadData();
+          renderExpenses();
+          renderOtherDocs();
+          if (typeof renderVerify === "function") renderVerify();
+          refreshBadgesAndPulse_();
+          syncPortalCache_();
         }, err => {
           btn.disabled = false;
           toast(err.message);
@@ -2458,8 +2599,12 @@
           callApi("updateLogMeta", "apiUpdateLogMeta", [SESSION_TOKEN, receiptId, row, next, null], res => {
               closeConfirm();
               if (!res || !res.ok) return handleApiError_(res, "เปลี่ยนไม่สำเร็จ");
+              item.flow = next;
               toast(`เปลี่ยนเป็น ${next} แล้ว`);
-              loadData();
+              renderExpenses();
+              if (typeof renderVerify === "function") renderVerify();
+              refreshBadgesAndPulse_();
+              syncPortalCache_();
             }, err => {
               closeConfirm();
               toast(err.message);
@@ -2578,7 +2723,7 @@
             toast(res.aiSkipped
               ? `บันทึกแล้ว ${res.receiptId} (ไฟล์ > 4 MB บันทึกลง Drive โดยตรง)`
               : `บันทึกแล้ว ${res.receiptId} (${res.docType} · ${res.company})`);
-            loadData();
+            loadData(false, true);
           }, err => {
             btn.disabled = false;
             btn.textContent = "อัปโหลดและวิเคราะห์";
@@ -2692,7 +2837,7 @@
               <div class="row-meta">โดย ${esc(l.by)}${l.receiptId ? ` · ${esc(l.receiptId)} <button type="button" class="copy-btn" onclick="copyText('${escJsAttr(l.receiptId)}')">คัดลอก</button>` : ""}${flipBtn}</div>
             </td>
             <td class="amt num ${amtCls}">${sign}${esc(l.amt)}</td>
-            <td>${l.url ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิด${EXT_ICON}</a>` : "-"}</td>
+            <td>${l.url ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">เปิด${EXT_ICON}</a>` : "-"}</td>
           </tr>`;
       }).join("");
 
@@ -2725,7 +2870,7 @@
             ${l.userNote ? `<div class="row-sum" style="margin-top:0;color:#0369a1;font-weight:500;">ข้อความพนักงาน: ${esc(l.userNote)}</div>` : ""}
             <div class="m-card-foot">
               <div class="m-card-foot-left">${flipBtn}</div>
-              ${l.url ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์${EXT_ICON}</a>` : ""}
+              ${l.url ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">เปิดไฟล์${EXT_ICON}</a>` : ""}
             </div>
           </article>`;
       }).join("");
@@ -2768,7 +2913,7 @@
               <div class="vendor-name">${esc(title)}</div>
               <div class="row-meta">โดย ${esc(l.by)}${l.receiptId ? " · " + esc(l.receiptId) : ""}</div>
             </td>
-            <td>${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิด${EXT_ICON}</a>` : "-"}</td>
+            <td>${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">เปิด${EXT_ICON}</a>` : "-"}</td>
           </tr>`;
       }).join("");
 
@@ -2786,7 +2931,7 @@
             </div>
             <div class="m-card-foot">
               <div class="m-card-foot-left"><span class="rec-id">${esc(l.receiptId || "")}</span></div>
-              ${l.url ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์${EXT_ICON}</a>` : ""}
+              ${l.url ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">เปิดไฟล์${EXT_ICON}</a>` : ""}
             </div>
           </article>`;
       }).join("");
@@ -2944,7 +3089,7 @@
           if (!res || !res.ok) return handleApiError_(res, "บันทึกไม่สำเร็จ");
           document.getElementById("newSchedTask").value = "";
           toast("บันทึกตารางงานแล้ว");
-          loadData();
+          loadData(false, true);
         }, err => { btn.disabled = false; toast(err.message); });
     }
 
@@ -2954,8 +3099,12 @@
       callApi("updateScheduleStatus", "apiUpdateScheduleStatus", [SESSION_TOKEN, row, status], res => {
           window._busyAction = false;
           if (!res || !res.ok) return handleApiError_(res, "อัปเดตไม่สำเร็จ");
+          const s = (STATE.schedules || []).find(x => x.row === row);
+          if (s) s.status = status;
           toast(`อัปเดตสถานะเป็น ${status}`);
-          loadData();
+          renderCalendar();
+          refreshBadgesAndPulse_();
+          syncPortalCache_();
         }, err => { window._busyAction = false; toast(err.message); });
     }
 
@@ -2997,7 +3146,7 @@
             <td>${esc(l.by)}</td>
             <td><span class="tag ${cls}">${esc(st)}</span></td>
             <td style="white-space:nowrap;">
-              ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">ดู</a>` : ""}
+              ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">ดู</a>` : ""}
               <button class="btn btn-outline btn-sm" onclick="openEditLog(${l.row})">แก้ไข</button>
               <button class="btn btn-ok btn-sm" onclick="verifyItem('${escJsAttr(l.receiptId)}', ${l.row}, 'Verified')">ผ่าน</button>
               <button class="btn btn-warn btn-sm" onclick="verifyItem('${escJsAttr(l.receiptId)}', ${l.row}, 'Needs Fix')">แก้</button>
@@ -3041,7 +3190,7 @@
                 <button class="btn btn-warn btn-sm" onclick="verifyItem('${escJsAttr(l.receiptId)}', ${l.row}, 'Needs Fix')">แก้</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteItem('${escJsAttr(l.receiptId)}', ${l.row})">ลบ</button>
               </div>
-              ${l.url ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">ดูไฟล์${EXT_ICON}</a>` : ""}
+              ${l.url ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">ดูไฟล์${EXT_ICON}</a>` : ""}
             </div>
           </article>`;
       }).join("");
@@ -3053,8 +3202,13 @@
       callApi("updateVerifyStatus", "apiUpdateVerifyStatus", [SESSION_TOKEN, receiptId, row, status], res => {
           window._busyAction = false;
           if (!res || !res.ok) return handleApiError_(res, "ไม่สำเร็จ");
+          const log = (STATE.logs || []).find(l => (receiptId && l.receiptId === receiptId) || l.row === row);
+          if (log) log.verifyStatus = status;
           toast(`อัปเดตสถานะเป็น ${status}`);
-          loadData();
+          renderVerify();
+          renderExpenses();
+          refreshBadgesAndPulse_();
+          syncPortalCache_();
         }, err => { window._busyAction = false; toast(err.message); });
     }
 
@@ -3076,8 +3230,16 @@
           callApi("bulkVerifyLogs", "apiBulkVerifyLogs", [SESSION_TOKEN, items, "Verified"], res => {
             closeConfirm();
             if (!res || !res.ok) return handleApiError_(res, "อัปเดตไม่สำเร็จ");
+            const rowSet = new Set(items.map(i => i.row));
+            const idSet = new Set(items.map(i => i.receiptId).filter(Boolean));
+            (STATE.logs || []).forEach(l => {
+              if (rowSet.has(l.row) || (l.receiptId && idSet.has(l.receiptId))) l.verifyStatus = "Verified";
+            });
             toast(`ตรวจผ่านแล้ว ${res.updated || items.length} รายการ`);
-            loadData();
+            renderVerify();
+            renderExpenses();
+            refreshBadgesAndPulse_();
+            syncPortalCache_();
           }, err => { closeConfirm(); toast(err.message); });
         }
       );
@@ -3094,8 +3256,13 @@
           callApi("deleteLogItem", "apiDeleteLogItem", [SESSION_TOKEN, receiptId, row], res => {
               closeConfirm();
               if (!res || !res.ok) return handleApiError_(res, "ลบไม่สำเร็จ");
+              STATE.logs = (STATE.logs || []).filter(l => !((receiptId && l.receiptId === receiptId) || l.row === row));
               toast("ลบรายการเรียบร้อย");
-              loadData();
+              renderVerify();
+              renderExpenses();
+              renderOtherDocs();
+              refreshBadgesAndPulse_();
+              syncPortalCache_();
             }, err => { closeConfirm(); toast(err.message); });
         }
       );
@@ -3302,7 +3469,7 @@
             return `<div class="prj-doc-row" style="${muted}">
               <div><strong class="num">${esc(d.docId)}</strong> · <span class="tag">${esc(d.status)}</span> · <span class="num">${fmtNum(d.grandTotal)} ฿</span></div>
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                ${d.pdfUrl ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(d.pdfUrl))}" target="_blank" rel="noopener">เปิด PDF</a>` : ""}
+                ${d.pdfUrl ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(d.pdfUrl))}" target="_blank" rel="noopener noreferrer">เปิด PDF</a>` : ""}
                 ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveProjectDoc('issued','${escJsAttr(d.docId)}',0,'${escJsAttr(p.projectId)}')">ย้าย</button><button type="button" class="btn btn-danger btn-sm" onclick="confirmUnlinkProjectDoc('issued','${escJsAttr(d.docId)}',0)">เอาออก</button>` : ""}
               </div>
             </div>`;
@@ -3313,7 +3480,7 @@
               <div><strong class="num">${esc(l.receiptId)}</strong> · ${esc(l.docType || l.flow)} · <span class="num">${esc(l.amt || "-")}</span></div>
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <span class="tag">${esc(l.verifyStatus || "-")}</span>
-                ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์</a>` : ""}
+                ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">เปิดไฟล์</a>` : ""}
                 ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0},'${escJsAttr(p.projectId)}')">ย้าย</button><button type="button" class="btn btn-danger btn-sm" onclick="confirmUnlinkProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0})">เอาออก</button>` : ""}
               </div>
             </div>`;
@@ -3361,7 +3528,7 @@
           ${pipe.otherLogs.map(l => `<div class="prj-doc-row">
             <div><strong class="num">${esc(l.receiptId)}</strong> · ${esc(l.docType || l.flow)} · ${esc(l.sum || l.vendor || "-")} · <span class="num">${esc(l.amt || "-")}</span></div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-              ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener">เปิดไฟล์</a>` : ""}
+              ${l.url ? `<a class="btn btn-outline btn-sm" href="${esc(authDriveUrl(l.url))}" target="_blank" rel="noopener noreferrer">เปิดไฟล์</a>` : ""}
               ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0},'${escJsAttr(p.projectId)}')">ย้าย</button><button type="button" class="btn btn-danger btn-sm" onclick="confirmUnlinkProjectDoc('log','${escJsAttr(l.receiptId)}',${Number(l.row) || 0})">เอาออก</button>` : ""}
             </div>
           </div>`).join("")}
@@ -3419,6 +3586,8 @@
       callApi("updateProjectWorkflow", "apiUpdateProjectWorkflow", [SESSION_TOKEN, projectId, nextWf], res => {
           if (!res || !res.ok) return handleApiError_(res, "บันทึกขั้นตอนไม่สำเร็จ");
           if (p && res.workflow) p.workflow = res.workflow;
+          renderTodayPulse();
+          syncPortalCache_();
           toast("บันทึกข้อมูลโปรเจกต์แล้ว");
         }, err => toast(err.message));
     }
@@ -3461,13 +3630,18 @@
     }
 
     function confirmDeleteProject(projectId, title) {
-      openConfirm("ลบโปรเจกต์?", `ยืนยันลบ ${projectId} (${title}) ออกจากระบบ? (ลบได้เฉพาะโปรเจกต์ที่ยังไม่มีเอกสาร/บิล/สต็อกผูกอยู่)`, "Delete", () => {
+      openConfirm("ลบโปรเจกต์?", `ยืนยันลบ ${esc(projectId)} (${esc(title)}) ออกจากระบบ? (ลบได้เฉพาะโปรเจกต์ที่ยังไม่มีเอกสาร/บิล/สต็อกผูกอยู่)`, "Delete", () => {
         callApi("deleteProject", "apiDeleteProject", [SESSION_TOKEN, projectId], res => {
+          closeConfirm();
           if (!res || !res.ok) return handleApiError_(res, "ลบโปรเจกต์ไม่สำเร็จ");
+          STATE.projects = (STATE.projects || []).filter(p => p.projectId !== projectId);
           closeModal("projectDetailModal");
           toast(`ลบโปรเจกต์ ${projectId} แล้ว`);
-          loadData();
-        }, err => toast(err.message));
+          renderProjects();
+          renderCalendar();
+          refreshBadgesAndPulse_();
+          syncPortalCache_();
+        }, err => { closeConfirm(); toast(err.message); });
       }, true);
     }
 
@@ -3494,19 +3668,21 @@
       renderIssuedDocs();
       renderExpenses();
       renderTodayPulse();
+      syncPortalCache_();
     }
 
     function confirmUnlinkProjectDoc(kind, id, rowNum) {
       openConfirm(
         "เอาเอกสารออกจากโปรเจกต์?",
-        `ยืนยันเอา ${id} ออกจากโปรเจกต์นี้? (เอกสารและไฟล์ PDF ยังอยู่ครบ ไม่ถูกลบ สามารถผูกใหม่ได้ทีหลัง)`,
+        `ยืนยันเอา ${esc(id)} ออกจากโปรเจกต์นี้? (เอกสารและไฟล์ PDF ยังอยู่ครบ ไม่ถูกลบ สามารถผูกใหม่ได้ทีหลัง)`,
         "เอาออก",
         () => {
           callApi("linkProjectDoc", "apiLinkProjectDoc", [SESSION_TOKEN, kind, id, rowNum, ""], res => {
+            closeConfirm();
             if (!res || !res.ok) return handleApiError_(res, "เอาเอกสารออกไม่สำเร็จ");
             applyLocalDocProjectLink(kind, id, rowNum, "");
             toast(`เอา ${id} ออกจากโปรเจกต์แล้ว`);
-          }, err => toast(err.message));
+          }, err => { closeConfirm(); toast(err.message); });
         },
         true
       );
@@ -3633,7 +3809,7 @@
           if (!res || !res.ok) return handleApiError_(res, "สร้างโปรเจกต์ไม่สำเร็จ");
           closeModal("projectModal");
           toast(`สร้างโปรเจกต์ ${res.projectId} แล้ว`);
-          loadData();
+          loadData(false, true);
         }, err => { btn.disabled = false; toast(err.message); });
     }
 
@@ -3653,8 +3829,13 @@
       callApi("updateProjectStatus", "apiUpdateProjectStatus", [SESSION_TOKEN, projectId, status], res => {
           window._busyAction = false;
           if (!res || !res.ok) return handleApiError_(res, "อัปเดตไม่สำเร็จ");
+          const p = (STATE.projects || []).find(x => x.projectId === projectId);
+          if (p) p.status = status;
           toast(`อัปเดต ${projectId} → ${status}`);
-          loadData();
+          renderProjects();
+          renderCalendar();
+          refreshBadgesAndPulse_();
+          syncPortalCache_();
         }, err => { window._busyAction = false; toast(err.message); });
     }
 
@@ -3803,7 +3984,7 @@
           if (!res || !res.ok) return handleApiError_(res, "เพิ่มสินค้าไม่สำเร็จ");
           closeModal("productModal");
           toast(`เพิ่มสินค้า ${res.productNumber} แล้ว`);
-          loadData();
+          loadData(false, true);
         }, err => { btn.disabled = false; toast(err.message); });
     }
 
@@ -3860,7 +4041,7 @@
           if (!res || !res.ok) return handleApiError_(res, "รับเข้าสต็อกไม่สำเร็จ");
           closeModal("receiveModal");
           toast(`รับเข้าคลังสำเร็จ (${res.lotId})`);
-          loadData();
+          loadData(false, true);
         }, err => { btn.disabled = false; toast(err.message); });
     }
 
@@ -3930,7 +4111,7 @@
           if (!res || !res.ok) return handleApiError_(res, "บันทึกไม่สำเร็จ");
           closeModal("moveStockModal");
           toast(`บันทึกการเคลื่อนไหว ${res.moveId} แล้ว`);
-          loadData();
+          loadData(false, true);
         }, err => { btn.disabled = false; toast(err.message); });
     }
 
@@ -3981,7 +4162,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               ${stSel}
-              ${d.pdfUrl ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(d.pdfUrl))}" target="_blank" rel="noopener"><span>เปิด PDF</span>${EXT_ICON}</a>` : ""}
+              ${d.pdfUrl ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(d.pdfUrl))}" target="_blank" rel="noopener noreferrer"><span>เปิด PDF</span>${EXT_ICON}</a>` : ""}
             </div>
           </article>`;
       }).join("");
@@ -4184,7 +4365,7 @@
           if (!res || !res.ok) return handleApiError_(res, "บันทึกไม่สำเร็จ");
           closeModal("counterpartyModal");
           toast(`บันทึกคู่ค้า ${res.partnerId} เรียบร้อย`);
-          loadData();
+          loadData(false, true);
         }, err => {
           btn.disabled = false;
           btn.textContent = "บันทึก";
@@ -4204,9 +4385,11 @@
           callApi("deleteCounterparty", "apiDeleteCounterparty", [SESSION_TOKEN, pid], res => {
               closeConfirm();
               if (!res || !res.ok) return handleApiError_(res, "ลบไม่สำเร็จ");
+              STATE.counterparties = (STATE.counterparties || []).filter(c => c.partnerId !== pid);
               closeModal("counterpartyModal");
               toast(`ลบคู่ค้า ${pid} เรียบร้อย`);
-              loadData();
+              renderCounterparties();
+              syncPortalCache_();
             }, err => { closeConfirm(); toast(err.message); });
         }
       );
@@ -4225,7 +4408,7 @@
               if (btn) { btn.disabled = false; btn.textContent = "รวมคู่ค้าซ้ำ"; }
               if (!res || !res.ok) return handleApiError_(res, "รวมคู่ค้าไม่สำเร็จ");
               toast(res.merged > 0 ? `รวมคู่ค้าซ้ำแล้ว ${res.merged} รายการ` : "ไม่พบคู่ค้าซ้ำในระบบ");
-              loadData();
+              loadData(false, true);
             }, err => {
               closeConfirm();
               if (btn) { btn.disabled = false; btn.textContent = "รวมคู่ค้าซ้ำ"; }
@@ -4242,7 +4425,7 @@
           if (btn) { btn.disabled = false; btn.textContent = "ดึงจากบิลเก่า"; }
           if (!res || !res.ok) return handleApiError_(res, "ดึงข้อมูลไม่สำเร็จ");
           toast(`ดึงคู่ค้าใหม่เข้าฐานข้อมูลแล้ว ${res.added || 0} ราย`);
-          loadData();
+          loadData(false, true);
         }, err => {
           if (btn) { btn.disabled = false; btn.textContent = "ดึงจากบิลเก่า"; }
           toast(err.message);
@@ -4350,7 +4533,7 @@
           if (!res || !res.ok) return handleApiError_(res, "สร้างเอกสารไม่สำเร็จ");
           closeModal("issueDocModal");
           toast(`สร้าง ${res.docId} และบันทึก PDF ลง Drive แล้ว`);
-          loadData();
+          loadData(false, true);
         }, err => {
           btn.disabled = false;
           btn.textContent = "สร้าง PDF & บันทึก";
@@ -4364,15 +4547,22 @@
       callApi("updateIssuedDocStatus", "apiUpdateIssuedDocStatus", [SESSION_TOKEN, docId, status], res => {
           window._busyAction = false;
           if (!res || !res.ok) return handleApiError_(res, "อัปเดตไม่สำเร็จ");
+          const doc = (STATE.issuedDocs || []).find(d => d.docId === docId);
+          if (doc) {
+            doc.status = status;
+            if (doc.docType !== "QT") {
+              (STATE.logs || []).forEach(l => {
+                if (l.receiptId === docId) l.countCashflow = status === "Cancelled" ? "No" : "Yes";
+              });
+            }
+          }
           toast(`อัปเดต ${docId} → ${status}`);
-          loadData();
+          renderIssuedDocs();
+          renderExpenses();
+          refreshBadgesAndPulse_();
+          syncPortalCache_();
         }, err => { window._busyAction = false; toast(err.message); });
     }
-
-    document.addEventListener("keydown", e => {
-      if (e.key !== "Escape") return;
-      document.querySelectorAll(".confirm-backdrop:not(.hidden)").forEach(m => m.classList.add("hidden"));
-    });
 
     loadData();
   </script>
