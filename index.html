@@ -636,6 +636,7 @@
       .cal-ev { font-size: 12px; padding: 1px 4px; }
       .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); right: 14px; left: 14px; text-align: center; }
     }
+    @media (max-width: 520px) { .hide-xs { display: none; } }
 
     .confirm-backdrop {
       position: fixed; inset: 0; background: rgba(20, 25, 23, .48);
@@ -644,7 +645,7 @@
       overflow-y: auto;
     }
     #projectDetailModal { z-index: 200; }
-    #uploadDocModal, #issueDocModal, #relinkDocModal, #editLogModal, #moveStockModal, #receiveModal, #productModal, #addSerialModal, #projectModal, #counterpartyModal { z-index: 250; }
+    #uploadDocModal, #issueDocModal, #relinkDocModal, #editLogModal, #moveStockModal, #receiveModal, #productModal, #addSerialModal, #projectModal, #counterpartyModal, #globalSearchModal { z-index: 250; }
     #confirmModal { z-index: 300; }
     .confirm-card {
       width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; overscroll-behavior: contain;
@@ -706,6 +707,16 @@
     .prj-card-product_only { border-left: 4px solid #2563eb; }
     .prj-card-procurement { border-left: 4px solid #d97706; }
     .cal-ev.prj-ev { font-weight: 700; border: 1px solid transparent; }
+    .cal-ev.rent-ev { background: #f3e8ff; color: #6b21a8; font-weight: 700; border: 1px solid #e9d5ff; }
+    .cal-ev.rent-ev.overdue { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
+    .gs-group-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 6px 4px 2px; }
+    .gs-item {
+      width: 100%; text-align: left; font-family: inherit; background: #fff;
+      border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px;
+      cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      min-height: 44px; transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out);
+    }
+    .gs-item:hover { background: #f8fafc; border-color: var(--brand); }
 
     /* Today Pulse Strip */
     .pulse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; margin-bottom: 18px; }
@@ -886,6 +897,10 @@
                 <span id="uiUserName">-</span>
                 <span id="uiUserRole" class="role-badge">-</span>
               </div>
+              <button id="btnGlobalSearch" type="button" class="btn btn-outline btn-sm" onclick="openGlobalSearch()" title="ค้นหาด่วนทั้งระบบ (Ctrl+K)" aria-label="ค้นหาด่วน">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span class="hide-xs">ค้นหา</span>
+              </button>
               <button id="eraToggleBtn" class="btn btn-outline btn-sm" onclick="toggleYearEra()" title="สลับแสดงปี ค.ศ. / พ.ศ.">ค.ศ.</button>
               <button id="btnRefresh" class="btn btn-outline btn-sm" onclick="loadData(true)" aria-label="รีเฟรชข้อมูล">
                 <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
@@ -986,7 +1001,6 @@
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button type="button" class="btn btn-outline btn-sm" onclick="showAllExpenseMonths()">ดูทุกเดือน</button>
-              <button type="button" class="btn btn-outline btn-sm" onclick="exportExpensesCsv()">ส่งออก CSV</button>
               <button type="button" class="btn btn-primary btn-sm" onclick="exportAccountingPackCsv()">ชุดส่งบัญชี (VAT/50ทวิ)</button>
               <button type="button" class="btn btn-ghost btn-sm" onclick="resetExpenseFilters()">รีเซ็ต</button>
             </div>
@@ -1707,7 +1721,7 @@
           <label for="idPartnerPick">เลือกจากฐานข้อมูลคู่ค้า/สาขา (เติมชื่อ+เลขภาษี+ที่อยู่อัตโนมัติ)</label>
           <select id="idPartnerPick" onchange="applyPartnerToIssueDoc()"><option value="">— พิมพ์เอง หรือเลือกจากฐานข้อมูล —</option></select>
         </div>
-        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:8px;">
+        <div class="modal-grid-2">
           <div class="field"><label for="idCust">ชื่อลูกค้า / คู่ค้า</label><input id="idCust" type="text" placeholder="เช่น บจก. ... หรือ รพ. ..."></div>
           <div class="field"><label for="idTax">เลขผู้เสียภาษี (ไม่บังคับ)</label><input id="idTax" type="text" placeholder="0123456789012"></div>
         </div>
@@ -1775,6 +1789,21 @@
           <button type="button" id="btnSavePartner" class="btn btn-primary btn-sm" onclick="submitCounterparty()">บันทึก</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- GLOBAL QUICK SEARCH MODAL (Ctrl+K) -->
+  <div id="globalSearchModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" aria-label="ค้นหาด่วนทั้งระบบ" onclick="if(event.target===this)closeModal('globalSearchModal')">
+    <div class="confirm-card" style="max-width:560px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;">
+        <div class="confirm-title" style="margin:0;">ค้นหาด่วนทั้งระบบ <span style="font-size:11px;font-weight:600;color:var(--muted);">(Ctrl+K)</span></div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('globalSearchModal')" aria-label="ปิด">✕</button>
+      </div>
+      <div class="search-wrap" style="margin-bottom:10px;">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="globalSearchInput" type="search" placeholder="ค้นหาทุกอย่าง: โปรเจกต์, บิล, PDF, สินค้า, SN, คู่ค้า, เอกสารบริษัท..." oninput="renderGlobalSearch()">
+      </div>
+      <div id="globalSearchResults" style="max-height:55vh;overflow-y:auto;display:grid;gap:6px;"></div>
     </div>
   </div>
 
@@ -2595,8 +2624,16 @@
     }
 
     document.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && String(e.key || "").toLowerCase() === "k") {
+        const appEl = document.getElementById("appView");
+        if (STATE && appEl && !appEl.classList.contains("hidden")) {
+          e.preventDefault();
+          openGlobalSearch();
+        }
+        return;
+      }
       if (e.key !== "Escape") return;
-      const order = ["confirmModal", "relinkDocModal", "editLogModal", "uploadDocModal", "issueDocModal", "addSerialModal", "moveStockModal", "editLotModal", "movementsModal", "receiveModal", "productModal", "projectModal", "counterpartyModal", "moreSheetModal", "projectDetailModal"];
+      const order = ["globalSearchModal", "confirmModal", "relinkDocModal", "editLogModal", "uploadDocModal", "issueDocModal", "addSerialModal", "moveStockModal", "editLotModal", "movementsModal", "receiveModal", "productModal", "projectModal", "counterpartyModal", "moreSheetModal", "projectDetailModal"];
       for (const id of order) {
         const el = document.getElementById(id);
         if (!el || el.classList.contains("hidden")) continue;
@@ -2718,41 +2755,7 @@
     }
 
     function exportExpensesCsv() {
-      if (!LAST_FILTERED_EXP.length) return toast("ไม่มีรายการให้ส่งออก");
-      const safeCsv = v => {
-        let s = String(v == null ? "" : v).replace(/\r?\n/g, " ");
-        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
-        return `"${s.replace(/"/g, '""')}"`;
-      };
-      const header = ["วันที่เอกสาร", "รหัสอ้างอิง", "บริษัท", "โปรเจกต์", "ประเภทเงิน", "นับยอด", "หมวดเอกสาร", "คู่ค้าหลัก", "ผู้โอน → ผู้รับ", "ยอดเงิน", "สรุปรายการ", "ผู้ส่ง", "ลิงก์ไฟล์ Drive"];
-      const rows = LAST_FILTERED_EXP.map(l => [
-        l.docDate || String(l.date || "").slice(0, 10),
-        l.receiptId || "",
-        l.company || "Nontakarn",
-        l.projectId || "",
-        l.flow || "รายจ่าย",
-        l.countCashflow || "Yes",
-        l.docType || "",
-        l.vendor || "",
-        l.fromTo || "",
-        l.amt || "",
-        l.sum || "",
-        l.by || "",
-        l.url || ""
-      ].map(safeCsv).join(","));
-      const csv = "\uFEFF" + [header.map(safeCsv).join(","), ...rows].join("\r\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const m = document.getElementById("expMonth").value || "all";
-      const co = (document.getElementById("expCompany").value || "AllCompanies").replace(/\s+/g, "_");
-      a.href = url;
-      a.download = `Finance_${co}_${m}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast(`ส่งออก ${LAST_FILTERED_EXP.length} รายการแล้ว`);
+      exportFinanceCsv();
     }
 
     function flipFlow(receiptId, row, currentFlow) {
@@ -3240,6 +3243,16 @@
           }
         }
       });
+      ((STATE.inventory && STATE.inventory.serials) || []).forEach(s => {
+        if (s.status !== "Rented" || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.warrantyEnd || ""))) return;
+        const ymd = String(s.warrantyEnd);
+        if (!byDate[ymd]) byDate[ymd] = [];
+        byDate[ymd].push({
+          kind: "rental", date: ymd, lotId: s.lotId, serialNumber: s.serialNumber,
+          productNumber: s.productNumber, company: s.company, customer: s.customer,
+          projectId: s.projectId, isOverdue: ymd < todayYmd
+        });
+      });
 
       let html = "";
       for (let i = 0; i < 42; i++) {
@@ -3257,6 +3270,9 @@
         const evs = byDate[ymd] || [];
         const cls = ["cal-cell", other ? "other" : "", ymd === todayYmd ? "today" : "", ymd === SELECTED_DATE ? "selected" : ""].join(" ");
         const pills = evs.slice(0, 3).map(e => {
+          if (e.kind === "rental") {
+            return `<div class="cal-ev rent-ev ${e.isOverdue ? "overdue" : ""}" title="คืนเช่า ${esc(e.serialNumber)} (${esc(e.customer || "-")})">คืนเช่า · ${esc(e.serialNumber)}</div>`;
+          }
           if (e.kind === "project") {
             const tag = e.subKind === "appoint" ? "นัด" : "งาน";
             return `<div class="cal-ev prj-ev tpl-${esc(e.template)}" title="${esc(e.projectId + " " + e.title)}">${tag} · ${esc(e.title)}</div>`;
@@ -3278,6 +3294,23 @@
         return;
       }
       box.innerHTML = events.map(e => {
+        if (e.kind === "rental") {
+          return `
+            <div class="ev-item" style="border-left:4px solid ${e.isOverdue ? "#e11d48" : "#7c3aed"};">
+              <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+                <div>
+                  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
+                    <strong class="num" style="color:var(--brand);">${esc(e.productNumber)}</strong>
+                    <span class="tag ${e.isOverdue ? "tag-err" : "tag-tax"}">${e.isOverdue ? "เกินกำหนดคืน" : "ครบกำหนดคืนเช่า"}</span>
+                    ${e.projectId ? `<button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" onclick="openProjectDetail('${escJsAttr(e.projectId)}')">${esc(e.projectId)}</button>` : ""}
+                  </div>
+                  <strong class="num" style="font-size:14px;">SN: ${esc(e.serialNumber)}</strong>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="openMoveStockModal('${escJsAttr(e.lotId)}','RETURN','${escJsAttr(e.serialNumber)}')">รับคืนเครื่อง →</button>
+              </div>
+              <div class="doc-sub" style="margin-top:4px;">ผู้เช่า: ${esc(e.customer || "-")} · กำหนดคืน ${esc(fmtDispDate(e.date))}</div>
+            </div>`;
+        }
         if (e.kind === "project") {
           const tplSpec = PROJECT_TEMPLATES[e.template] || PROJECT_TEMPLATES.standard;
           const kindLabel = e.subKind === "appoint" ? "Appointment (วันนัด)" : "Work Period (ช่วงทำงาน)";
@@ -4616,16 +4649,17 @@
         l.docType || "",
         l.vendor || "",
         parseAmt(l.amt),
-        l.summary || "",
+        l.sum || "",
         l.fromTo || "",
         l.verifyStatus || "",
         l.by || "",
-        l.userNote || ""
+        l.userNote || "",
+        l.url || ""
       ]);
       if (!rows.length) return toast("ไม่มีรายการให้ส่งออก");
       downloadCsvFile_(
         `nontakarn-finance-${formatYMD(new Date())}.csv`,
-        ["Date", "Receipt_ID", "Company", "Project_ID", "Flow", "Count_Cashflow", "Doc_Type", "Vendor", "Amount", "Summary", "From_To", "Verify_Status", "By", "User_Note"],
+        ["Date", "Receipt_ID", "Company", "Project_ID", "Flow", "Count_Cashflow", "Doc_Type", "Vendor", "Amount", "Summary", "From_To", "Verify_Status", "By", "User_Note", "Drive_URL"],
         rows
       );
       toast(`ส่งออก ${rows.length} รายการเป็น CSV แล้ว`);
@@ -4871,7 +4905,7 @@
                 <button type="button" class="copy-btn" onclick="copyText('${escJsAttr(d.docId)}')">คัดลอก</button>
                 <span class="tag tag-tax">${esc(ISS_LABELS[d.docType] || d.docType)}</span>
                 <span class="co-pill">${esc(d.company)}</span>
-                ${d.projectId ? `<span class="co-pill" style="background:#eff6ff;color:#1d4ed8;">${esc(d.projectId)}</span>` : ""}
+                ${d.projectId ? `<button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" onclick="openProjectDetail('${escJsAttr(d.projectId)}')">${esc(d.projectId)}</button>` : ""}
                 <span class="num" style="font-size:12px;color:var(--ink-muted);">${esc(fmtDispDate(d.docDate))}</span>
               </div>
               <div class="doc-title" style="margin-top:4px;">${esc(d.customerName)}</div>
@@ -4884,6 +4918,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               ${stSel}
+              ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="duplicateIssuedDoc('${escJsAttr(d.docId)}')">ออกต่อ / สำเนา</button>` : ""}
               ${d.pdfUrl ? `<a class="btn btn-primary btn-sm" href="${esc(authDriveUrl(d.pdfUrl))}" target="_blank" rel="noopener noreferrer"><span>เปิด PDF</span>${EXT_ICON}</a>` : ""}
             </div>
           </article>`;
@@ -4983,6 +5018,32 @@
       applyIssueDocRules(p.whtRate != null ? p.whtRate : 0);
       document.getElementById("btnSaveIssueDoc").disabled = false;
       document.getElementById("issueDocModal").classList.remove("hidden");
+    }
+
+    function duplicateIssuedDoc(docId) {
+      const d = (STATE.issuedDocs || []).find(x => x.docId === docId);
+      if (!d) return;
+      const nextType = d.docType === "QT" ? "IV" : (d.docType === "IV" ? "TX" : d.docType);
+      openIssueDocModal({ company: d.company, docType: nextType, projectId: d.projectId || "", whtRate: d.whtRate || 0 });
+      document.getElementById("idCust").value = d.customerName || "";
+      document.getElementById("idTax").value = d.customerTaxId || "";
+      document.getElementById("idAddr").value = d.customerAddress || "";
+      document.getElementById("idDiscount").value = String(d.discount || 0);
+      document.getElementById("idNote").value = d.note || "";
+      ISSUE_ITEMS = (d.items && d.items.length)
+        ? d.items.map(it => ({
+            itemType: it.itemType || (it.productNumber ? "Product" : "Service"),
+            productNumber: it.productNumber || "",
+            description: it.description || "",
+            qty: Number(it.qty) || 1,
+            unit: it.unit || "ชิ้น",
+            unitPrice: Number(it.unitPrice) || 0
+          }))
+        : [{ itemType: "Service", productNumber: "", description: "", qty: 1, unit: "งาน", unitPrice: 0 }];
+      renderIssueItems();
+      applyIssueDocRules(d.whtRate || 0);
+      recalcIssueTotals();
+      toast(`คัดลอกจาก ${d.docId} → ${nextType} แล้ว`);
     }
 
     function applyPartnerToIssueDoc() {
@@ -5284,6 +5345,95 @@
           refreshBadgesAndPulse_();
           syncPortalCache_();
         }, err => { window._busyAction = false; toast(err.message); });
+    }
+
+    function openGlobalSearch() {
+      const inp = document.getElementById("globalSearchInput");
+      if (inp) inp.value = "";
+      renderGlobalSearch();
+      document.getElementById("globalSearchModal").classList.remove("hidden");
+      setTimeout(() => { if (inp) inp.focus(); }, 30);
+    }
+
+    function jumpGlobalResult(kind, id, q) {
+      closeModal("globalSearchModal");
+      if (kind === "project") {
+        switchTab("work");
+        switchSubTab("work", "projects");
+        openProjectDetail(id);
+      } else if (kind === "bill") {
+        switchTab("finance");
+        switchSubTab("finance", "bills");
+        document.getElementById("expMonth").value = "";
+        document.getElementById("expSearch").value = q || id;
+        renderExpenses();
+      } else if (kind === "issued") {
+        switchTab("finance");
+        switchSubTab("finance", "issue");
+        document.getElementById("issSearch").value = id;
+        renderIssuedDocs();
+      } else if (kind === "inv") {
+        switchTab("inventory");
+        document.getElementById("invSearch").value = id;
+        renderInventory();
+      } else if (kind === "cp") {
+        switchTab("counterparties");
+        document.getElementById("cpSearch").value = id;
+        renderCounterparties();
+      } else if (kind === "doc") {
+        switchTab("docs");
+        switchSubTab("docs", "company");
+        document.getElementById("companySearch").value = q || id;
+        renderCompanyDocs();
+      }
+    }
+
+    function renderGlobalSearch() {
+      const box = document.getElementById("globalSearchResults");
+      if (!box) return;
+      const q = (document.getElementById("globalSearchInput") || {}).value || "";
+      if (!q.trim()) {
+        box.innerHTML = `<div class="doc-sub" style="padding:12px 4px;text-align:center;">พิมพ์อย่างน้อย 1 ตัวอักษร เช่น รหัสโปรเจกต์, ชื่อลูกค้า, SN, เลขเอกสาร หรือ กด <kbd>Ctrl+K</kbd></div>`;
+        return;
+      }
+      const sections = [];
+      const prjs = (STATE.projects || []).filter(p => smartMatch(`${p.projectId} ${p.title} ${p.customer} ${p.company}`, q)).slice(0, 5);
+      if (prjs.length) sections.push({ label: "โปรเจกต์", items: prjs.map(p => ({ kind: "project", id: p.projectId, title: `${p.projectId} · ${p.title}`, sub: p.customer || p.company, tag: p.status })) });
+
+      const bills = getFinanceLogs().filter(l => smartMatch(`${l.receiptId} ${l.vendor} ${l.sum} ${l.projectId} ${l.docType}`, q)).slice(0, 5);
+      if (bills.length) sections.push({ label: "บิลรับ-จ่าย", items: bills.map(l => ({ kind: "bill", id: l.receiptId || l.vendor, q: l.receiptId || l.vendor, title: l.vendor || l.docType, sub: `${l.receiptId || ""} · ${l.amt} ฿`, tag: l.docType })) });
+
+      const iss = (STATE.issuedDocs || []).filter(d => smartMatch(`${d.docId} ${d.customerName} ${d.projectId} ${d.docType}`, q)).slice(0, 5);
+      if (iss.length) sections.push({ label: "เอกสาร PDF ที่ออก", items: iss.map(d => ({ kind: "issued", id: d.docId, title: `${d.docId} · ${d.customerName}`, sub: `${fmtNum(d.grandTotal)} ฿`, tag: d.docType })) });
+
+      const inv = STATE.inventory || { products: [], serials: [] };
+      const invHits = [
+        ...(inv.products || []).filter(p => smartMatch(`${p.productNumber} ${p.name} ${p.category}`, q)).slice(0, 5).map(p => ({ kind: "inv", id: p.productNumber, title: `${p.productNumber} · ${p.name}`, sub: `คงเหลือ ${p.totalStock || 0} ${p.unit || "ชิ้น"}`, tag: p.company })),
+        ...(inv.serials || []).filter(s => smartMatch(`${s.serialNumber} ${s.productNumber} ${s.customer} ${s.projectId}`, q)).slice(0, 5).map(s => ({ kind: "inv", id: s.serialNumber, title: `SN: ${s.serialNumber}`, sub: `${s.productNumber}${s.customer ? " · " + s.customer : ""}`, tag: s.status }))
+      ].slice(0, 5);
+      if (invHits.length) sections.push({ label: "คลังสินค้า & Serial", items: invHits });
+
+      const cps = (STATE.counterparties || []).filter(c => smartMatch(`${c.partnerId} ${c.nameTh} ${c.nameEn} ${c.aliases} ${c.taxId}`, q)).slice(0, 5);
+      if (cps.length) sections.push({ label: "คู่ค้า", items: cps.map(c => ({ kind: "cp", id: c.partnerId, title: c.nameTh || c.nameEn, sub: c.taxId || c.aliases || c.partnerId, tag: c.role })) });
+
+      const docs = (STATE.companyDocs || []).filter(d => smartMatch(`${d.docName} ${d.category} ${d.keywords} ${d.company}`, q)).slice(0, 5);
+      if (docs.length) sections.push({ label: "เอกสารบริษัท", items: docs.map(d => ({ kind: "doc", id: d.docName, q, title: d.docName, sub: d.category, tag: d.company })) });
+
+      if (!sections.length) {
+        box.innerHTML = `<div class="empty-state" style="padding:18px;"><p>ไม่พบข้อมูลที่ตรงกับ "${esc(q)}"</p></div>`;
+        return;
+      }
+      box.innerHTML = sections.map(sec => `
+        <div class="gs-group-title">${esc(sec.label)}</div>
+        ${sec.items.map(it => `
+          <button type="button" class="gs-item" onclick="jumpGlobalResult('${escJsAttr(it.kind)}','${escJsAttr(it.id)}','${escJsAttr(it.q || it.id)}')">
+            <div style="min-width:0;">
+              <div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(it.title)}</div>
+              <div class="doc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(it.sub || "")}</div>
+            </div>
+            <span class="tag tag-teal">${esc(it.tag || "")}</span>
+          </button>`).join("")}
+      `).join("");
     }
 
     loadData();
