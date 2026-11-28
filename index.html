@@ -717,6 +717,7 @@
       min-height: 44px; transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out);
     }
     .gs-item:hover { background: #f8fafc; border-color: var(--brand); }
+    .gs-item.active { background: #f0fdfa; border-color: var(--brand); outline: 2px solid rgba(15, 118, 110, 0.2); }
 
     /* Today Pulse Strip */
     .pulse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; margin-bottom: 18px; }
@@ -1299,10 +1300,13 @@
       <section id="tab-counterparties" class="hidden">
         <div class="section-head">
           <h1 class="section-title">ฐานข้อมูลคู่ค้า &amp; สาขา</h1>
-          <div id="btnAddPartner" class="hidden" style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button id="btnBackfillCp" type="button" class="btn btn-outline btn-sm" onclick="backfillCounterparties()">ดึงจากบิลเก่า</button>
-            <button id="btnDedupCp" type="button" class="btn btn-outline btn-sm" onclick="deduplicateCounterparties()">รวมคู่ค้าซ้ำ</button>
-            <button type="button" class="btn btn-primary btn-sm" onclick="openCounterpartyModal('')">+ เพิ่มคู่ค้า / สาขา</button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            <button type="button" id="btnExportCpCsv" class="btn btn-outline btn-sm" onclick="exportCounterpartiesCsv()">ส่งออก CSV</button>
+            <div id="btnAddPartner" class="hidden" style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button id="btnBackfillCp" type="button" class="btn btn-outline btn-sm" onclick="backfillCounterparties()">ดึงจากบิลเก่า</button>
+              <button id="btnDedupCp" type="button" class="btn btn-outline btn-sm" onclick="deduplicateCounterparties()">รวมคู่ค้าซ้ำ</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="openCounterpartyModal('')">+ เพิ่มคู่ค้า / สาขา</button>
+            </div>
           </div>
         </div>
         <div class="filter-shell">
@@ -1801,7 +1805,7 @@
       </div>
       <div class="search-wrap" style="margin-bottom:10px;">
         <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="globalSearchInput" type="search" placeholder="ค้นหาทุกอย่าง: โปรเจกต์, บิล, PDF, สินค้า, SN, คู่ค้า, เอกสารบริษัท..." oninput="renderGlobalSearch()">
+        <input id="globalSearchInput" type="search" placeholder="ค้นหาทุกอย่าง: โปรเจกต์, บิล, PDF, สินค้า, SN, คู่ค้า, เอกสารบริษัท..." oninput="renderGlobalSearch()" onkeydown="handleGlobalSearchKey(event)">
       </div>
       <div id="globalSearchResults" style="max-height:55vh;overflow-y:auto;display:grid;gap:6px;"></div>
     </div>
@@ -3852,9 +3856,16 @@
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
             ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openAttachExistingDoc('${escJsAttr(p.projectId)}')">+ ดึงบิลจาก LINE / เอกสารเดิม</button>` : ""}
+            ${pipe.logs.length ? `<button type="button" class="btn btn-outline btn-sm" onclick="closeModal('projectDetailModal');jumpToProjectBills('${escJsAttr(p.projectId)}')">ดูบิลทั้งหมด</button>` : ""}
             ${canDeleteDetail ? `<button type="button" class="btn btn-danger btn-sm" onclick="confirmDeleteProject('${escJsAttr(p.projectId)}','${escJsAttr(p.title)}')">Delete</button>` : ""}
             <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('projectDetailModal')">ปิด</button>
           </div>
+        </div>
+        <div id="prjDetailPnlStrip" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding:10px;background:#f8fafc;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;">
+          <div><div style="font-size:11.5px;color:var(--ink-muted);">รายรับ (+)</div><div class="num amt-in" style="font-weight:700;">+${fmtNum(p.totalIncome)}</div></div>
+          <div><div style="font-size:11.5px;color:var(--ink-muted);">รายจ่ายบิล (-)</div><div class="num amt-out" style="font-weight:700;">-${fmtNum(p.totalExpense)}</div></div>
+          <div><div style="font-size:11.5px;color:var(--ink-muted);">ต้นทุนสินค้า (-)</div><div class="num amt-out" style="font-weight:700;">-${fmtNum(p.productCost)}</div></div>
+          <div><div style="font-size:11.5px;color:var(--ink-muted);">กำไรสุทธิ</div><div class="num ${p.netProfit >= 0 ? "amt-in" : "amt-out"}" style="font-weight:800;">${p.netProfit >= 0 ? "+" : "-"}${fmtNum(Math.abs(p.netProfit))}</div></div>
         </div>
         ${isTeam ? `
           <div class="panel" style="padding:10px;margin-bottom:10px;background:#f8fafc;display:grid;gap:8px;">
@@ -4078,16 +4089,16 @@
       }
 
       const btn = document.getElementById("btnRelinkSubmit");
-      btn.disabled = true;
+      setBtnBusy_(btn, true);
       callApi("linkProjectDoc", "apiLinkProjectDoc", [SESSION_TOKEN, kind, id, rowNum, nextProjectId], res => {
-        btn.disabled = false;
+        setBtnBusy_(btn, false);
         if (!res || !res.ok) return handleApiError_(res, "อัปเดตการผูกโปรเจกต์ไม่สำเร็จ");
         applyLocalDocProjectLink(kind, id, rowNum, nextProjectId);
         closeModal("relinkDocModal");
         toast(nextProjectId ? `ผูก ${id} เข้า ${nextProjectId} แล้ว` : `เอา ${id} ออกจากโปรเจกต์แล้ว`);
       }, err => {
-        btn.disabled = false;
-        toast(err.message);
+        setBtnBusy_(btn, false);
+        toast(err.message, "error");
       });
     }
 
@@ -4110,7 +4121,7 @@
       const title = document.getElementById("newPrjTitle").value.trim();
       if (!title) return toast("กรุณาระบุชื่อโปรเจกต์");
       const btn = document.getElementById("btnSavePrj");
-      btn.disabled = true;
+      setBtnBusy_(btn, true, "กำลังสร้าง...");
       callApi("addProject", "apiAddProject", [SESSION_TOKEN, {
           company: document.getElementById("newPrjCo").value,
           title,
@@ -4122,12 +4133,12 @@
           workEnd: document.getElementById("newPrjWorkEnd").value,
           note: document.getElementById("newPrjNote").value
         }], res => {
-          btn.disabled = false;
+          setBtnBusy_(btn, false);
           if (!res || !res.ok) return handleApiError_(res, "สร้างโปรเจกต์ไม่สำเร็จ");
           closeModal("projectModal");
           toast(`สร้างโปรเจกต์ ${res.projectId} แล้ว`);
           loadData(false, true);
-        }, err => { btn.disabled = false; toast(err.message); });
+        }, err => { setBtnBusy_(btn, false); toast(err.message, "error"); });
     }
 
     function jumpToProjectBills(projectId) {
@@ -4498,18 +4509,18 @@
       const serials = document.getElementById("asSerials").value.trim();
       if (!SERIAL_LOT_ID || !serials) return toast("กรุณาระบุ Serial Number อย่างน้อย 1 รายการ");
       const btn = document.getElementById("btnSaveSerial");
-      btn.disabled = true;
+      setBtnBusy_(btn, true);
       callApi("addLotSerials", "apiAddLotSerials", [SESSION_TOKEN, {
         lotId: SERIAL_LOT_ID,
         serials,
         note: document.getElementById("asNote").value
       }], res => {
-        btn.disabled = false;
+        setBtnBusy_(btn, false);
         if (!res || !res.ok) return handleApiError_(res, "เพิ่ม Serial ไม่สำเร็จ");
         closeModal("addSerialModal");
         toast(`เพิ่ม ${res.added} Serial เข้า ${res.lotId} แล้ว`);
         loadData(false, true);
-      }, err => { btn.disabled = false; toast(err.message); });
+      }, err => { setBtnBusy_(btn, false); toast(err.message, "error"); });
     }
 
     function openReceiveModal(preCo, preSku) {
@@ -5003,7 +5014,10 @@
       if (tg) tg.classList.add("hidden");
       refreshIssueProjectAndProd();
       if (p.projectId) document.getElementById("idPrj").value = p.projectId;
-      if (p.customer) {
+      if (p.partnerId) {
+        document.getElementById("idPartnerPick").value = p.partnerId;
+        applyPartnerToIssueDoc();
+      } else if (p.customer) {
         const q = String(p.customer).trim().toLowerCase();
         const matchCp = cps.find(c => [c.nameTh, c.nameEn, c.aliases].some(x => x && String(x).toLowerCase().includes(q)));
         if (matchCp) {
@@ -5094,10 +5108,39 @@
             ${c.aliases ? `<div class="row-meta">ชื่อย่อ/สลิป: ${esc(c.aliases)}</div>` : ""}
             <div class="m-card-foot">
               <div class="m-card-foot-left"><span class="row-meta" style="margin:0;">${esc(c.contact || c.note || "")}</span></div>
-              ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openCounterpartyModal('${escJsAttr(c.partnerId)}')">แก้ไข</button>` : ""}
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="jumpToPartnerBills('${escJsAttr(c.nameTh || c.nameEn)}')">ดูบิล</button>
+                ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openIssueDocModal({partnerId:'${escJsAttr(c.partnerId)}'})">+ ออกเอกสาร</button><button type="button" class="btn btn-outline btn-sm" onclick="openCounterpartyModal('${escJsAttr(c.partnerId)}')">แก้ไข</button>` : ""}
+              </div>
             </div>
           </article>`;
       }).join("");
+    }
+
+    function jumpToPartnerBills(name) {
+      switchTab("finance");
+      switchSubTab("finance", "bills");
+      const mEl = document.getElementById("expMonth");
+      if (mEl) mEl.value = "";
+      const sEl = document.getElementById("expSearch");
+      if (sEl) sEl.value = name || "";
+      renderExpenses();
+    }
+
+    function exportCounterpartiesCsv() {
+      const q = document.getElementById("cpSearch") ? document.getElementById("cpSearch").value : "";
+      const roleF = document.getElementById("cpRoleFilter") ? document.getElementById("cpRoleFilter").value : "";
+      const list = (STATE.counterparties || []).filter(c => {
+        if (roleF && c.role !== roleF) return false;
+        return smartMatch(`${c.partnerId} ${c.nameTh} ${c.nameEn} ${c.aliases} ${c.taxId} ${c.branch} ${c.address}`, q);
+      });
+      if (!list.length) return toast("ไม่มีข้อมูลคู่ค้าสำหรับส่งออก");
+      downloadCsvFile_(
+        `counterparties_${formatYMD(new Date())}.csv`,
+        ["Partner_ID", "Role", "Name_TH", "Name_EN", "Branch", "Tax_ID", "Contact", "Address", "Aliases", "Note"],
+        list.map(c => [c.partnerId, c.role, c.nameTh, c.nameEn, c.branch, c.taxId, c.contact, c.address, c.aliases, c.note])
+      );
+      toast(`ส่งออกรายชื่อคู่ค้า ${list.length} รายการแล้ว`);
     }
 
     function openCounterpartyModal(partnerId) {
@@ -5128,8 +5171,7 @@
       if (!nameTh && !nameEn) return toast("กรุณาระบุชื่อคู่ค้า (ไทยหรืออังกฤษ)");
       if (taxDigits && taxDigits.length !== 13) return toast("เลขประจำตัวผู้เสียภาษีต้องมี 13 หลัก");
       const btn = document.getElementById("btnSavePartner");
-      btn.disabled = true;
-      btn.textContent = "กำลังบันทึก...";
+      setBtnBusy_(btn, true);
       const input = {
         partnerId: document.getElementById("cpId").value.trim(),
         nameTh,
@@ -5143,16 +5185,14 @@
         note: document.getElementById("cpNote").value.trim()
       };
       callApi("saveCounterparty", "apiSaveCounterparty", [SESSION_TOKEN, input], res => {
-          btn.disabled = false;
-          btn.textContent = "บันทึก";
+          setBtnBusy_(btn, false);
           if (!res || !res.ok) return handleApiError_(res, "บันทึกไม่สำเร็จ");
           closeModal("counterpartyModal");
           toast(`บันทึกคู่ค้า ${res.partnerId} เรียบร้อย`);
           loadData(false, true);
         }, err => {
-          btn.disabled = false;
-          btn.textContent = "บันทึก";
-          toast(err.message);
+          setBtnBusy_(btn, false);
+          toast(err.message, "error");
         });
     }
 
@@ -5294,8 +5334,7 @@
       const validItems = ISSUE_ITEMS.filter(it => String(it.description || "").trim() && Number(it.qty) > 0);
       if (!validItems.length) return toast("กรุณาระบุรายละเอียดและจำนวน (>= 1) อย่างน้อย 1 รายการ");
       const btn = document.getElementById("btnSaveIssueDoc");
-      btn.disabled = true;
-      btn.textContent = "กำลังสร้าง PDF...";
+      setBtnBusy_(btn, true, "กำลังสร้าง PDF...");
       callApi("createIssuedDoc", "apiCreateIssuedDoc", [SESSION_TOKEN, {
           docType: document.getElementById("idType").value,
           company: document.getElementById("idCo").value,
@@ -5311,16 +5350,14 @@
           note: document.getElementById("idNote").value,
           items: ISSUE_ITEMS
         }], res => {
-          btn.disabled = false;
-          btn.textContent = "สร้าง PDF & บันทึก";
+          setBtnBusy_(btn, false);
           if (!res || !res.ok) return handleApiError_(res, "สร้างเอกสารไม่สำเร็จ");
           closeModal("issueDocModal");
           toast(`สร้าง ${res.docId} และบันทึก PDF ลง Drive แล้ว`);
           loadData(false, true);
         }, err => {
-          btn.disabled = false;
-          btn.textContent = "สร้าง PDF & บันทึก";
-          toast(err.message);
+          setBtnBusy_(btn, false);
+          toast(err.message, "error");
         });
     }
 
@@ -5347,12 +5384,29 @@
         }, err => { window._busyAction = false; toast(err.message); });
     }
 
+    let GS_ACTIVE_IDX = 0;
+
     function openGlobalSearch() {
+      GS_ACTIVE_IDX = 0;
       const inp = document.getElementById("globalSearchInput");
       if (inp) inp.value = "";
       renderGlobalSearch();
       document.getElementById("globalSearchModal").classList.remove("hidden");
       setTimeout(() => { if (inp) inp.focus(); }, 30);
+    }
+
+    function handleGlobalSearchKey(e) {
+      const items = Array.from(document.querySelectorAll("#globalSearchResults .gs-item"));
+      if (!items.length) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        GS_ACTIVE_IDX = (GS_ACTIVE_IDX + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+        items.forEach((el, i) => el.classList.toggle("active", i === GS_ACTIVE_IDX));
+        items[GS_ACTIVE_IDX].scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        (items[GS_ACTIVE_IDX] || items[0]).click();
+      }
     }
 
     function jumpGlobalResult(kind, id, q) {
@@ -5389,6 +5443,7 @@
     }
 
     function renderGlobalSearch() {
+      GS_ACTIVE_IDX = 0;
       const box = document.getElementById("globalSearchResults");
       if (!box) return;
       const q = (document.getElementById("globalSearchInput") || {}).value || "";
@@ -5434,6 +5489,8 @@
             <span class="tag tag-teal">${esc(it.tag || "")}</span>
           </button>`).join("")}
       `).join("");
+      const first = box.querySelector(".gs-item");
+      if (first) first.classList.add("active");
     }
 
     loadData();
