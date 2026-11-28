@@ -698,7 +698,7 @@
     .cal-ev.prj-ev { font-weight: 700; border: 1px solid transparent; }
 
     /* Today Pulse Strip */
-    .pulse-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .pulse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; margin-bottom: 18px; }
     .pulse-card {
       text-align: left; font-family: inherit;
       background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--border-strong);
@@ -713,6 +713,7 @@
     .pulse-amber { border-top-color: #d97706; }
     .pulse-emerald { border-top-color: #059669; }
     .pulse-rose { border-top-color: #e11d48; }
+    .pulse-purple { border-top-color: #7c3aed; }
     .pulse-label { font-size: 12px; font-weight: 600; color: var(--muted); }
     .pulse-val { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; line-height: 1.2; }
     .pulse-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1569,6 +1570,29 @@
     </div>
   </div>
 
+  <!-- EDIT LOT MODAL -->
+  <div id="editLotModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('editLotModal')">
+    <div class="confirm-card" style="max-width:440px;max-height:90vh;overflow-y:auto;">
+      <div id="elTitle" class="confirm-title">แก้ไขข้อมูล Lot</div>
+      <div id="elSub" style="font-size:12.5px;color:var(--ink-muted);margin-bottom:10px;"></div>
+      <div style="display:grid;gap:10px;margin-bottom:18px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="field"><label for="elLotNum">เลข Lot / Batch</label><input id="elLotNum" type="text"></div>
+          <div class="field"><label for="elExp">วันหมดอายุ (ไม่บังคับ)</label><input id="elExp" type="date"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="field"><label for="elCost">ต้นทุนต่อหน่วย (บาท)</label><input id="elCost" type="number" step="0.01"></div>
+          <div class="field"><label for="elRecId">รหัสบิลซื้อ REC-</label><input id="elRecId" type="text"></div>
+        </div>
+        <div class="field"><label for="elSupplier">ซัพพลายเออร์</label><input id="elSupplier" type="text"></div>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('editLotModal')">ยกเลิก</button>
+        <button type="button" id="btnSaveLot" class="btn btn-primary btn-sm" onclick="submitEditLot()">บันทึก Lot</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MOVE STOCK (OUT / RETURN) MODAL -->
   <div id="moveStockModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('moveStockModal')">
     <div class="confirm-card" style="max-width:440px;max-height:90vh;overflow-y:auto;">
@@ -2287,6 +2311,25 @@
       });
       const net = inc - exp;
 
+      const isTeam = STATE.user && ["admin", "manager", "management"].includes(String(STATE.user.role || "").toLowerCase());
+      const inv = STATE.inventory || {};
+      const rentedSer = (inv.serials || []).filter(s => s.status === "Rented");
+      const plus14Iso = formatYMD(new Date(Date.now() + 14 * 86400000));
+      const overdueRent = rentedSer.filter(s => s.warrantyEnd && s.warrantyEnd < todayIso).length;
+      const dueSoonRent = rentedSer.filter(s => s.warrantyEnd && s.warrantyEnd >= todayIso && s.warrantyEnd <= plus14Iso).length;
+      const rentPriceMap = new Map((inv.products || []).map(p => [`${p.company}||${p.productNumber}`, Number(p.rentPrice) || 0]));
+      const monthlyRent = rentedSer.reduce((sum, s) => sum + (rentPriceMap.get(`${s.company}||${s.productNumber}`) || 0), 0);
+      const rentCardCls = overdueRent > 0 ? "pulse-rose" : (dueSoonRent > 0 ? "pulse-amber" : "pulse-purple");
+      const rentSubTxt = overdueRent > 0
+        ? `เกินกำหนดคืน ${overdueRent} เครื่อง`
+        : (dueSoonRent > 0 ? `ใกล้ครบกำหนด ${dueSoonRent} เครื่อง` : (monthlyRent > 0 ? `ค่าเช่า ~${fmtNum(monthlyRent)} ฿/ด.` : "ปกติทุกเครื่อง"));
+      const rentCardHtml = isTeam ? `
+        <button type="button" class="pulse-card ${rentCardCls}" onclick="switchTab('inventory');setInvFilter('rented');">
+          <span class="pulse-label">กำลังเช่า</span>
+          <span class="pulse-val num">${rentedSer.length}</span>
+          <span class="pulse-sub">${rentSubTxt}</span>
+        </button>` : "";
+
       box.innerHTML = `
         <button type="button" class="pulse-card pulse-teal" onclick="switchTab('work');switchSubTab('work','calendar');goToday();">
           <span class="pulse-label">งานวันนี้</span>
@@ -2307,7 +2350,7 @@
           <span class="pulse-label">สุทธิเดือนนี้ (฿)</span>
           <span class="pulse-val num ${net >= 0 ? "amt-in" : "amt-out"}">${net >= 0 ? "+" : "-"}${fmtNum(Math.abs(net))}</span>
           <span class="pulse-sub">รับ +${fmtNum(inc)} · จ่าย -${fmtNum(exp)}</span>
-        </button>
+        </button>${rentCardHtml}
       `;
     }
 
@@ -4144,6 +4187,13 @@
             const prjPill = s.projectId
               ? `<button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" onclick="event.stopPropagation();openProjectDetail('${escJsAttr(s.projectId)}')">${esc(s.projectId)}</button>`
               : "";
+            const todayIso = formatYMD(new Date());
+            const plus14Iso = formatYMD(new Date(Date.now() + 14 * 86400000));
+            const rentDueBadge = (s.status === "Rented" && s.warrantyEnd)
+              ? (s.warrantyEnd < todayIso
+                ? `<span class="tag tag-invoice">เกินกำหนดคืน</span>`
+                : (s.warrantyEnd <= plus14Iso ? `<span class="tag tag-wht">ใกล้ครบกำหนดคืน</span>` : ""))
+              : "";
             const dateTxt = s.warrantyEnd ? `${s.status === "Rented" ? "กำหนดคืน" : "ประกันถึง"} ${esc(fmtDispDate(s.warrantyEnd))}` : "";
             const actBtns = isTeam && s.lotId ? (
               s.status === "In Stock"
@@ -4157,6 +4207,7 @@
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                   <strong class="num">SN: ${esc(s.serialNumber)}</strong>
                   <span class="tag ${stInfo.cls}">${stInfo.label}</span>
+                  ${rentDueBadge}
                   <span style="color:var(--ink-muted);">${locTxt}</span>
                   ${prjPill}
                   ${dateTxt ? `<span class="num" style="color:var(--ink-muted);font-size:11.5px;">· ${dateTxt}</span>` : ""}
@@ -4183,6 +4234,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation()">
                   <span class="num" style="font-weight:800;font-size:14px;">คงเหลือ ${l.qtyRemaining} / ${l.qtyReceived}</span>
+                  ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openEditLotModal('${escJsAttr(l.lotId)}')">แก้ไข Lot</button>` : ""}
                   ${isTeam && totalLotSer < l.qtyReceived ? `<button type="button" class="btn btn-outline btn-sm" onclick="openAddSerialModal('${escJsAttr(l.lotId)}')">+ ซีเรียล (${totalLotSer}/${l.qtyReceived})</button>` : ""}
                   ${isTeam ? `<button type="button" class="btn btn-outline btn-sm" onclick="openMoveStockModal('${escJsAttr(l.lotId)}')">ส่งมอบ / เช่า / คืน</button>` : ""}
                 </div>
@@ -4400,6 +4452,53 @@
           toast(`รับเข้าคลังสำเร็จ (${res.lotId})`);
           loadData(false, true);
         }, err => { btn.disabled = false; toast(err.message); });
+    }
+
+    let EDITING_LOT_ID = "";
+    function openEditLotModal(lotId) {
+      const lot = ((STATE.inventory && STATE.inventory.lots) || []).find(l => l.lotId === lotId);
+      if (!lot) return;
+      EDITING_LOT_ID = lotId;
+      document.getElementById("elTitle").textContent = `แก้ไข Lot ${lot.lotNumber}`;
+      document.getElementById("elSub").textContent = `${lot.lotId} · ${lot.productNumber} (${lot.company})`;
+      document.getElementById("elLotNum").value = lot.lotNumber || "";
+      document.getElementById("elExp").value = lot.expiryDate || "";
+      document.getElementById("elCost").value = lot.unitCost != null ? lot.unitCost : 0;
+      document.getElementById("elSupplier").value = lot.supplier || "";
+      document.getElementById("elRecId").value = lot.purchaseReceiptId || "";
+      document.getElementById("btnSaveLot").disabled = false;
+      document.getElementById("editLotModal").classList.remove("hidden");
+    }
+
+    function submitEditLot() {
+      const lotNumber = document.getElementById("elLotNum").value.trim();
+      if (!lotNumber) return toast("กรุณาระบุเลข Lot");
+      const payload = {
+        lotId: EDITING_LOT_ID,
+        lotNumber,
+        expiryDate: document.getElementById("elExp").value,
+        unitCost: document.getElementById("elCost").value,
+        supplier: document.getElementById("elSupplier").value.trim(),
+        purchaseReceiptId: document.getElementById("elRecId").value.trim()
+      };
+      const btn = document.getElementById("btnSaveLot");
+      btn.disabled = true;
+      callApi("updateLot", "apiUpdateLot", [SESSION_TOKEN, payload], res => {
+        btn.disabled = false;
+        if (!res || !res.ok) return handleApiError_(res, "แก้ไข Lot ไม่สำเร็จ");
+        const lots = (STATE.inventory && STATE.inventory.lots) || [];
+        const target = lots.find(l => l.lotId === EDITING_LOT_ID);
+        if (target) {
+          target.lotNumber = payload.lotNumber;
+          target.expiryDate = payload.expiryDate;
+          target.unitCost = Number(payload.unitCost) || 0;
+          target.supplier = payload.supplier;
+          target.purchaseReceiptId = payload.purchaseReceiptId.toUpperCase();
+        }
+        closeModal("editLotModal");
+        toast(`อัปเดต Lot ${payload.lotNumber} แล้ว`);
+        loadData(false, true);
+      }, err => { btn.disabled = false; toast(err.message); });
     }
 
     function receiveStockFromLog(btn, receiptId, rowNum, projectId, fromEditModal) {
