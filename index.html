@@ -947,6 +947,7 @@
               <span>ตัวกรอง</span>
               <span id="expFilterBadge" class="filter-badge hidden">0</span>
             </button>
+            <button type="button" id="btnExportExpCsv" class="btn btn-outline btn-sm" onclick="exportFinanceCsv()">ส่งออก CSV</button>
             <button type="button" class="btn btn-primary btn-sm" onclick="openUploadModal()">+ อัปโหลด</button>
           </div>
           <div id="expDrawer" class="filter-drawer hidden">
@@ -1228,6 +1229,8 @@
           <h1 class="section-title">คลังสินค้า (SKU / Lot / Serial)</h1>
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
             <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('invGuideBox').classList.toggle('hidden')">? วิธีใช้คลัง</button>
+            <button type="button" id="btnMovements" class="btn btn-outline btn-sm" onclick="openMovementsModal()">ประวัติเคลื่อนไหว</button>
+            <button type="button" id="btnExportInvCsv" class="btn btn-outline btn-sm" onclick="exportInventoryCsv()">ส่งออก CSV</button>
             <div id="invAdminBtns" class="hidden" style="display:flex;gap:6px;flex-wrap:wrap;">
               <button type="button" class="btn btn-outline btn-sm" onclick="openProductModal()">+ เพิ่มสินค้า</button>
               <button type="button" class="btn btn-primary btn-sm" onclick="openReceiveModal()">+ รับเข้าสต็อก</button>
@@ -1589,6 +1592,29 @@
       <div class="confirm-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('editLotModal')">ยกเลิก</button>
         <button type="button" id="btnSaveLot" class="btn btn-primary btn-sm" onclick="submitEditLot()">บันทึก Lot</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STOCK MOVEMENTS AUDIT MODAL -->
+  <div id="movementsModal" class="confirm-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('movementsModal')">
+    <div class="confirm-card" style="max-width:760px;width:96%;max-height:90vh;overflow-y:auto;">
+      <div class="confirm-title">ประวัติเคลื่อนไหวสต็อก (Stock Movements)</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px;">
+        <select id="mvHistType" style="width:auto;min-width:155px;" onchange="renderMovementsModal()">
+          <option value="">ทุกประเภท</option>
+          <option value="IN">IN — รับเข้า</option>
+          <option value="OUT">OUT — ขาย/ส่งมอบ</option>
+          <option value="RENT">RENT — ปล่อยเช่า</option>
+          <option value="RETURN">RETURN — รับคืนจากขาย</option>
+          <option value="RENT_RETURN">RENT_RETURN — รับคืนจากเช่า</option>
+          <option value="ADJUST">ADJUST — ปรับยอด</option>
+        </select>
+        <input id="mvHistSearch" type="search" style="flex:1;min-width:180px;" placeholder="ค้นหา SKU, Lot, Serial, ลูกค้า, โปรเจกต์..." oninput="renderMovementsModal()">
+      </div>
+      <div id="mvHistBody" style="display:grid;gap:8px;max-height:58vh;overflow-y:auto;"></div>
+      <div class="confirm-actions" style="margin-top:14px;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('movementsModal')">ปิด</button>
       </div>
     </div>
   </div>
@@ -4499,6 +4525,131 @@
         toast(`อัปเดต Lot ${payload.lotNumber} แล้ว`);
         loadData(false, true);
       }, err => { btn.disabled = false; toast(err.message); });
+    }
+
+    function downloadCsvFile_(filename, headers, rows) {
+      const escCsv = v => {
+        const s = String(v == null ? "" : v);
+        const safe = (/^[=+\-@]/.test(s) && !/^-\d+(\.\d+)?$/.test(s)) ? "'" + s : s;
+        return `"${safe.replace(/"/g, '""')}"`;
+      };
+      const lines = [headers.map(escCsv).join(","), ...rows.map(r => r.map(escCsv).join(","))];
+      const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function exportFinanceCsv() {
+      const rows = (LAST_FILTERED_EXP || []).map(l => [
+        l.docDate || String(l.date || "").slice(0, 10),
+        l.receiptId || "",
+        l.company || "",
+        l.projectId || "",
+        l.flow || "",
+        l.countCashflow || "Yes",
+        l.docType || "",
+        l.vendor || "",
+        parseAmt(l.amt),
+        l.summary || "",
+        l.fromTo || "",
+        l.verifyStatus || "",
+        l.by || "",
+        l.userNote || ""
+      ]);
+      if (!rows.length) return toast("ไม่มีรายการให้ส่งออก");
+      downloadCsvFile_(
+        `nontakarn-finance-${formatYMD(new Date())}.csv`,
+        ["Date", "Receipt_ID", "Company", "Project_ID", "Flow", "Count_Cashflow", "Doc_Type", "Vendor", "Amount", "Summary", "From_To", "Verify_Status", "By", "User_Note"],
+        rows
+      );
+      toast(`ส่งออก ${rows.length} รายการเป็น CSV แล้ว`);
+    }
+
+    function exportInventoryCsv() {
+      const inv = STATE.inventory || { products: [], serials: [] };
+      const co = (document.getElementById("invCompany") || {}).value || "";
+      const prods = (inv.products || []).filter(p => !co || p.company === co);
+      if (!prods.length) return toast("ไม่มีสินค้าให้ส่งออก");
+      const rentedMap = new Map();
+      (inv.serials || []).forEach(s => {
+        if (s.status === "Rented") {
+          const k = `${s.company}||${s.productNumber}`;
+          rentedMap.set(k, (rentedMap.get(k) || 0) + 1);
+        }
+      });
+      const rows = prods.map(p => [
+        p.productNumber,
+        p.company,
+        p.name,
+        p.category || "",
+        p.unit || "ชิ้น",
+        p.trackingMode || "Lot",
+        p.totalStock || 0,
+        rentedMap.get(`${p.company}||${p.productNumber}`) || 0,
+        p.defaultCost || 0,
+        p.defaultPrice || 0,
+        p.rentPrice || 0,
+        p.minStock || 0,
+        p.status || "Active"
+      ]);
+      downloadCsvFile_(
+        `nontakarn-inventory-${formatYMD(new Date())}.csv`,
+        ["SKU", "Company", "Name", "Category", "Unit", "Tracking_Mode", "In_Stock", "Rented", "Cost", "Sale_Price", "Rent_Price_Monthly", "Min_Stock", "Status"],
+        rows
+      );
+      toast(`ส่งออก ${rows.length} SKU เป็น CSV แล้ว`);
+    }
+
+    function openMovementsModal() {
+      document.getElementById("mvHistType").value = "";
+      document.getElementById("mvHistSearch").value = "";
+      renderMovementsModal();
+      document.getElementById("movementsModal").classList.remove("hidden");
+    }
+
+    function renderMovementsModal() {
+      const box = document.getElementById("mvHistBody");
+      if (!box) return;
+      const tFilter = document.getElementById("mvHistType").value;
+      const q = document.getElementById("mvHistSearch").value.trim().toLowerCase();
+      const movs = (((STATE.inventory && STATE.inventory.movements) || []).slice()).reverse().filter(m => {
+        if (tFilter && m.moveType !== tFilter) return false;
+        if (q) {
+          const hay = [m.moveId, m.productNumber, m.lotId, m.serialNumber, m.projectId, m.customer, m.by, m.note].join(" ").toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+      if (!movs.length) {
+        box.innerHTML = `<div class="empty-state" style="padding:18px;"><p>ไม่พบประวัติเคลื่อนไหวสต็อก</p></div>`;
+        return;
+      }
+      const badgeCls = t => t === "IN" ? "tag-receipt" : (t === "RENT" ? "tag-tax" : (t === "RENT_RETURN" || t === "RETURN" ? "tag-teal" : (t === "OUT" ? "tag-slip" : "tag-wht")));
+      box.innerHTML = movs.slice(0, 200).map(m => `
+        <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
+          <div style="min-width:0;flex:1;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span class="tag ${badgeCls(m.moveType)}">${esc(m.moveType)}</span>
+              <strong class="num">${esc(m.productNumber)}</strong>
+              ${m.serialNumber ? `<span class="num" style="font-size:12px;">SN: ${esc(m.serialNumber)}</span>` : ""}
+              ${m.lotId ? `<span style="font-size:12px;color:var(--ink-muted);">(${esc(m.lotId)})</span>` : ""}
+              ${m.projectId ? `<button type="button" class="co-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;cursor:pointer;" onclick="closeModal('movementsModal');openProjectDetail('${escJsAttr(m.projectId)}')">${esc(m.projectId)}</button>` : ""}
+            </div>
+            <div style="font-size:12px;color:var(--ink-muted);margin-top:3px;">
+              ${esc(fmtDispDate(m.date))} · โดย ${esc(m.by || "-")}${m.customer ? ` · ลูกค้า/ผู้ขาย: ${esc(m.customer)}` : ""}${m.note ? ` · ${esc(m.note)}` : ""}
+            </div>
+          </div>
+          <div class="num" style="font-weight:800;font-size:15px;color:${m.qtyDelta >= 0 ? "var(--accent-dark)" : "#b91c1c"};">
+            ${m.qtyDelta >= 0 ? "+" : ""}${m.qtyDelta}
+          </div>
+        </div>
+      `).join("");
     }
 
     function receiveStockFromLog(btn, receiptId, rowNum, projectId, fromEditModal) {
