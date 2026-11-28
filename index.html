@@ -546,13 +546,20 @@
     .field { margin-bottom: 10px; min-width: 0; }
     .field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
 
-    /* Toast */
+    /* Toast & Offline Banner */
     .toast {
       position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #f7f6f2;
       padding: 12px 18px; border-radius: 12px; font-size: 13.5px; font-weight: 500;
-      z-index: 220; box-shadow: var(--shadow-lg); max-width: calc(100vw - 32px);
+      z-index: 220; box-shadow: var(--shadow-lg); max-width: calc(100vw - 32px); cursor: pointer;
       animation: modalIn 160ms var(--ease-out);
     }
+    .toast.toast-error { background: #991b1b; color: #ffffff; }
+    .offline-banner {
+      position: sticky; top: 0; z-index: 250; background: #991b1b; color: #ffffff;
+      text-align: center; padding: 7px 14px; font-size: 12.5px; font-weight: 600;
+    }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .data-table tbody tr:hover { background: #f8fafc; }
 
     .modal-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .modal-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
@@ -656,7 +663,8 @@
 
     .unlinked-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--radius-md); background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 13px; margin-bottom: 10px; }
     .inv-tree { display: grid; gap: 10px; }
-    .inv-tree-prod { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .inv-tree-prod { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); transition: box-shadow 150ms var(--ease-out); }
+    .inv-tree-prod:hover { box-shadow: var(--shadow); }
     .inv-tree-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; transition: background 140ms; }
     .inv-tree-head:hover { background: #f8fafc; }
     .inv-chev { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px; background: #f1f5f9; color: var(--ink-muted); font-size: 11px; flex-shrink: 0; transition: transform 150ms; margin-top: 2px; }
@@ -667,6 +675,8 @@
     .inv-tree-lot-head:hover { background: #f8fafc; }
     .inv-tree-serials { border-top: 1px dashed var(--border); padding: 8px 12px 10px 28px; display: grid; gap: 6px; background: #fcfcfd; }
     .inv-tree-serial { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; }
+    .inv-tree-serial.is-rented { background: #faf5ff; border-color: #ddd6fe; }
+    .inv-tree-serial.is-overdue { background: #fff1f2; border-color: #fecdd3; }
     @media (max-width: 720px) {
       .inv-tree-head, .inv-tree-lot-head { flex-direction: column; }
       .inv-tree-serials { padding-left: 12px; }
@@ -799,6 +809,7 @@
   </div>
 
   <!-- GOOGLE OAUTH LOGIN VIEW -->
+  <div id="offlineBanner" class="offline-banner hidden" role="status">⚠️ ไม่มีสัญญาณอินเทอร์เน็ต — กรุณาตรวจสอบการเชื่อมต่อก่อนบันทึกข้อมูล</div>
   <div id="authView" class="center-wrap hidden">
     <div class="state-card">
       <div class="brand" style="margin-bottom:18px;">
@@ -1548,15 +1559,15 @@
       <div class="confirm-title">รับสินค้าเข้าคลัง (สร้าง Lot ใหม่)</div>
       <div style="display:grid;gap:10px;margin:12px 0 18px;">
         <div class="field"><label for="rcProd">เลือกสินค้า</label><select id="rcProd" onchange="onReceiveProductChange()"></select></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="modal-grid-2">
           <div class="field"><label for="rcLot">เลข Lot / Batch</label><input id="rcLot" type="text" placeholder="B2026-11A"></div>
           <div class="field"><label for="rcExp">วันหมดอายุ (ไม่บังคับ)</label><input id="rcExp" type="date"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="modal-grid-2">
           <div class="field"><label for="rcQty">จำนวนรับเข้า</label><input id="rcQty" type="number" min="1" value="1"></div>
           <div class="field"><label for="rcCost">ต้นทุนต่อหน่วย (บาท)</label><input id="rcCost" type="number" step="0.01" placeholder="0"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="modal-grid-2">
           <div class="field"><label for="rcSupplier">ซัพพลายเออร์</label><input id="rcSupplier" type="text"></div>
           <div class="field"><label for="rcRecId">รหัสบิลซื้อ REC- (ไม่บังคับ)</label><input id="rcRecId" type="text" placeholder="REC-261124-XXXX"></div>
         </div>
@@ -1579,11 +1590,11 @@
       <div id="elTitle" class="confirm-title">แก้ไขข้อมูล Lot</div>
       <div id="elSub" style="font-size:12.5px;color:var(--ink-muted);margin-bottom:10px;"></div>
       <div style="display:grid;gap:10px;margin-bottom:18px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="modal-grid-2">
           <div class="field"><label for="elLotNum">เลข Lot / Batch</label><input id="elLotNum" type="text"></div>
           <div class="field"><label for="elExp">วันหมดอายุ (ไม่บังคับ)</label><input id="elExp" type="date"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="modal-grid-2">
           <div class="field"><label for="elCost">ต้นทุนต่อหน่วย (บาท)</label><input id="elCost" type="number" step="0.01"></div>
           <div class="field"><label for="elRecId">รหัสบิลซื้อ REC-</label><input id="elRecId" type="text"></div>
         </div>
@@ -1625,7 +1636,7 @@
       <div id="mvTitle" class="confirm-title">ส่งมอบ / รับคืนสต็อก</div>
       <div id="mvSub" style="font-size:12.5px;color:var(--ink-muted);margin-bottom:10px;"></div>
       <div style="display:grid;gap:10px;margin-bottom:18px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="modal-grid-2">
           <div class="field"><label for="mvType">ประเภท</label><select id="mvType" onchange="renderMoveSerialChoices()"><option value="OUT">ส่งมอบ / ขายให้ลูกค้า (ตัดสต็อกขาย)</option><option value="RENT">ปล่อยเช่าให้ลูกค้า (ตัดสต็อกชั่วคราว)</option><option value="RETURN">รับคืนเข้าคลัง (คืนจากขาย / คืนจากเช่า)</option></select></div>
           <div class="field" id="mvQtyWrap"><label for="mvQty">จำนวน</label><input id="mvQty" type="number" min="1" value="1"></div>
         </div>
@@ -1634,7 +1645,7 @@
           <label>เลือก Serial Number</label>
           <div id="mvSerialList" style="display:grid;gap:4px;max-height:140px;overflow-y:auto;padding:8px;border:1px solid var(--border);border-radius:10px;background:#f8fafc;"></div>
         </div>
-        <div id="mvOutMeta" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div id="mvOutMeta" class="modal-grid-2">
           <div class="field"><label for="mvProject">ผูกโปรเจกต์ (ไม่บังคับ)</label><select id="mvProject"></select></div>
           <div class="field"><label id="mvWarrantyLabel" for="mvWarranty">หมดประกัน (ไม่บังคับ)</label><input id="mvWarranty" type="date"></div>
         </div>
@@ -1739,11 +1750,11 @@
         <div class="field"><label for="cpNameTh">ชื่อบริษัท (ภาษาไทย — ใช้เป็นชื่อหลักในระบบ)</label><input id="cpNameTh" type="text" placeholder="เช่น บริษัท เซ็ทเทอร์น เซฟตี้ จำกัด"></div>
         <div class="field"><label for="cpNameEn">ชื่อบริษัท (ภาษาอังกฤษ — สำหรับจับคู่ OCR อัตโนมัติ)</label><input id="cpNameEn" type="text" placeholder="เช่น Southern Safety Co., Ltd."></div>
         <div class="field"><label for="cpAliases">ชื่อย่อ / ชื่อบนสลิปธนาคาร (คั่นด้วยจุลภาค)</label><input id="cpAliases" type="text" placeholder="เช่น SOUTHERN SAFETY, เซ็ทเทอร์น"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="modal-grid-2">
           <div class="field"><label for="cpTax">เลขประจำตัวผู้เสียภาษี (13 หลัก)</label><input id="cpTax" type="text" maxlength="13" placeholder="01055XXXXXXXX"></div>
           <div class="field"><label for="cpBranch">สำนักงาน / สาขา</label><input id="cpBranch" type="text" placeholder="สำนักงานใหญ่ หรือ สาขาที่ 00001"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="modal-grid-2">
           <div class="field">
             <label for="cpRole">บทบาท</label>
             <select id="cpRole">
@@ -1801,6 +1812,10 @@
           [gasFnName].apply(google.script.run, args || []);
         return;
       }
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        if (onErr) onErr(new Error("ไม่มีสัญญาณอินเทอร์เน็ต กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่"));
+        return;
+      }
       const rawArgs = Array.isArray(args) ? args : [];
       const isPublic = action === "config" || action === "loginGoogle";
       const reqToken = isPublic ? "" : String(rawArgs[0] || SESSION_TOKEN || "");
@@ -1820,6 +1835,11 @@
         .catch(err => {
           if (err && err.name === "AbortError") {
             if (onErr) onErr(new Error("การเชื่อมต่อหมดเวลา กรุณาลองใหม่"));
+            return;
+          }
+          const msg = String((err && err.message) || err || "");
+          if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+            if (onErr) onErr(new Error("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่"));
             return;
           }
           if (onErr) onErr(err);
@@ -1942,12 +1962,32 @@
       _debounceTimers[key] = setTimeout(fn, ms);
     }
 
-    function toast(msg) {
+    function setBtnBusy_(btn, busy, busyLabel = "กำลังบันทึก...") {
+      if (!btn) return;
+      if (busy) {
+        if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = busyLabel;
+      } else {
+        btn.disabled = false;
+        if (btn.dataset.origText) {
+          btn.textContent = btn.dataset.origText;
+          delete btn.dataset.origText;
+        }
+      }
+    }
+
+    function toast(msg, kind) {
       const el = document.getElementById("toast");
-      el.textContent = msg;
+      if (!el) return;
+      const text = String(msg || "");
+      const isErr = kind === "error" || /ไม่สำเร็จ|ผิดพลาด|กรุณา|เกิน|ซ้ำ|FORBIDDEN|ไม่มีสัญญาณ|หมดเวลา|ไม่ได้รับสิทธิ์|ไม่พบข้อมูล|เชื่อมต่อเซิร์ฟเวอร์ไม่ได้/.test(text);
+      el.textContent = text;
+      el.classList.toggle("toast-error", isErr);
       el.classList.remove("hidden");
+      el.onclick = () => el.classList.add("hidden");
       clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(() => el.classList.add("hidden"), 3000);
+      window._toastTimer = setTimeout(() => el.classList.add("hidden"), isErr ? 4500 : 3000);
     }
 
     function handleApiError_(res, fallbackMsg) {
@@ -1959,7 +1999,7 @@
         showAuthView("เซสชันหมดอายุ กรุณาเข้าสู่ระบบด้วย Google ใหม่อีกครั้ง");
         return;
       }
-      toast(err || fallbackMsg || "เกิดข้อผิดพลาด");
+      toast(err || fallbackMsg || "เกิดข้อผิดพลาด", "error");
     }
 
     function authDriveUrl(url) {
@@ -2556,7 +2596,7 @@
 
     document.addEventListener("keydown", e => {
       if (e.key !== "Escape") return;
-      const order = ["confirmModal", "relinkDocModal", "editLogModal", "uploadDocModal", "issueDocModal", "addSerialModal", "moveStockModal", "receiveModal", "productModal", "projectModal", "counterpartyModal", "moreSheetModal", "projectDetailModal"];
+      const order = ["confirmModal", "relinkDocModal", "editLogModal", "uploadDocModal", "issueDocModal", "addSerialModal", "moveStockModal", "editLotModal", "movementsModal", "receiveModal", "productModal", "projectModal", "counterpartyModal", "moreSheetModal", "projectDetailModal"];
       for (const id of order) {
         const el = document.getElementById(id);
         if (!el || el.classList.contains("hidden")) continue;
@@ -2567,6 +2607,16 @@
         return;
       }
     });
+
+    (function initOfflineWatch_() {
+      const syncNet = () => {
+        const b = document.getElementById("offlineBanner");
+        if (b && typeof navigator !== "undefined") b.classList.toggle("hidden", navigator.onLine !== false);
+      };
+      window.addEventListener("online", syncNet);
+      window.addEventListener("offline", syncNet);
+      syncNet();
+    })();
 
     document.addEventListener("click", e => {
       const t = e.target;
@@ -4228,8 +4278,11 @@
                   ? `<button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();openMoveStockModal('${escJsAttr(s.lotId)}','RETURN','${escJsAttr(s.serialNumber)}')">${s.status === "Rented" ? "รับคืนจากเช่า" : "รับคืนเข้าคลัง"}</button>`
                   : "")
             ) : "";
+            const rentStateCls = s.status === "Rented"
+              ? (s.warrantyEnd && s.warrantyEnd < todayIso ? " is-overdue" : " is-rented")
+              : "";
             return `
-              <div class="inv-tree-serial">
+              <div class="inv-tree-serial${rentStateCls}">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                   <strong class="num">SN: ${esc(s.serialNumber)}</strong>
                   <span class="tag ${stInfo.cls}">${stInfo.label}</span>
@@ -4344,8 +4397,11 @@
         productNumber = suggestNextSku(co, cat, name);
         document.getElementById("npSku").value = productNumber;
       }
+      if (Number(document.getElementById("npCost").value) < 0 || Number(document.getElementById("npPrice").value) < 0 || Number(document.getElementById("npRentPrice").value) < 0 || Number(document.getElementById("npMin").value) < 0) {
+        return toast("ราคาและจำนวนขั้นต่ำต้องไม่ติดลบ");
+      }
       const btn = document.getElementById("btnSaveProd");
-      btn.disabled = true;
+      setBtnBusy_(btn, true);
       const isEdit = Boolean(EDITING_PRODUCT);
       const payload = {
         company: isEdit ? EDITING_PRODUCT.company : co,
@@ -4360,7 +4416,7 @@
         minStock: document.getElementById("npMin").value
       };
       callApi(isEdit ? "updateProduct" : "addProduct", isEdit ? "apiUpdateProduct" : "apiAddProduct", [SESSION_TOKEN, payload], res => {
-          btn.disabled = false;
+          setBtnBusy_(btn, false);
           if (!res || !res.ok) return handleApiError_(res, isEdit ? "แก้ไขสินค้าไม่สำเร็จ" : "เพิ่มสินค้าไม่สำเร็จ");
           STATE.inventory = STATE.inventory || { products: [], lots: [], serials: [], movements: [] };
           STATE.inventory.products = STATE.inventory.products || [];
@@ -4388,7 +4444,7 @@
           closeModal("productModal");
           toast(isEdit ? `อัปเดตสินค้า ${res.productNumber} แล้ว` : `เพิ่มสินค้า ${res.productNumber} แล้ว`);
           loadData(false, true);
-        }, err => { btn.disabled = false; toast(err.message); });
+        }, err => { setBtnBusy_(btn, false); toast(err.message, "error"); });
     }
 
     function openAddSerialModal(lotId) {
@@ -4458,8 +4514,10 @@
         if (sns.length !== qty) return toast(`ต้องระบุ Serial Number ครบ ${qty} รายการ (ระบุมา ${sns.length})`);
         if (new Set(sns.map(s => s.toUpperCase())).size !== sns.length) return toast("พบ Serial Number ซ้ำกันในรายการ");
       }
+      const unitCostVal = Number(document.getElementById("rcCost").value);
+      if (isFinite(unitCostVal) && unitCostVal < 0) return toast("ต้นทุนต่อหน่วยต้องไม่ติดลบ");
       const btn = document.getElementById("btnSaveReceive");
-      btn.disabled = true;
+      setBtnBusy_(btn, true);
       callApi("receiveStock", "apiReceiveStock", [SESSION_TOKEN, {
           company,
           productNumber,
@@ -4472,12 +4530,12 @@
           serials: serialsRaw,
           note: document.getElementById("rcNote").value
         }], res => {
-          btn.disabled = false;
+          setBtnBusy_(btn, false);
           if (!res || !res.ok) return handleApiError_(res, "รับเข้าสต็อกไม่สำเร็จ");
           closeModal("receiveModal");
           toast(`รับเข้าคลังสำเร็จ (${res.lotId})`);
           loadData(false, true);
-        }, err => { btn.disabled = false; toast(err.message); });
+        }, err => { setBtnBusy_(btn, false); toast(err.message, "error"); });
     }
 
     let EDITING_LOT_ID = "";
@@ -4499,6 +4557,8 @@
     function submitEditLot() {
       const lotNumber = document.getElementById("elLotNum").value.trim();
       if (!lotNumber) return toast("กรุณาระบุเลข Lot");
+      const costVal = Number(document.getElementById("elCost").value);
+      if (isFinite(costVal) && costVal < 0) return toast("ต้นทุนต่อหน่วยต้องไม่ติดลบ");
       const payload = {
         lotId: EDITING_LOT_ID,
         lotNumber,
@@ -4508,9 +4568,9 @@
         purchaseReceiptId: document.getElementById("elRecId").value.trim()
       };
       const btn = document.getElementById("btnSaveLot");
-      btn.disabled = true;
+      setBtnBusy_(btn, true);
       callApi("updateLot", "apiUpdateLot", [SESSION_TOKEN, payload], res => {
-        btn.disabled = false;
+        setBtnBusy_(btn, false);
         if (!res || !res.ok) return handleApiError_(res, "แก้ไข Lot ไม่สำเร็จ");
         const lots = (STATE.inventory && STATE.inventory.lots) || [];
         const target = lots.find(l => l.lotId === EDITING_LOT_ID);
@@ -4524,7 +4584,7 @@
         closeModal("editLotModal");
         toast(`อัปเดต Lot ${payload.lotNumber} แล้ว`);
         loadData(false, true);
-      }, err => { btn.disabled = false; toast(err.message); });
+      }, err => { setBtnBusy_(btn, false); toast(err.message, "error"); });
     }
 
     function downloadCsvFile_(filename, headers, rows) {
@@ -4694,7 +4754,7 @@
       MOVING_LOT = lot;
       document.getElementById("mvTitle").textContent = `ส่งมอบ / ปล่อยเช่า / รับคืน: ${lot.productNumber}`;
       document.getElementById("mvSub").textContent = `Lot ${lot.lotNumber} (${lot.lotId}) · คงเหลือ ${lot.qtyRemaining}`;
-      document.getElementById("mvType").value = presetType === "RETURN" ? "RETURN" : (presetType === "RENT" ? "RENT" : "OUT");
+      document.getElementById("mvType").value = presetType === "RETURN" ? "RETURN" : (presetType === "RENT" ? "RENT" : (presetType ? "OUT" : (Number(lot.qtyRemaining || 0) <= 0 ? "RETURN" : "OUT")));
       document.getElementById("mvQty").value = "1";
       const prjSel = document.getElementById("mvProject");
       prjSel.innerHTML = `<option value="">— ไม่ผูกโปรเจกต์ —</option>` +
@@ -4753,12 +4813,12 @@
         if (!selectedSN.length) return toast("กรุณาเลือก Serial Number อย่างน้อย 1 รายการ");
       } else {
         if (!isFinite(qty) || qty < 1) return toast("กรุณาระบุจำนวน (>= 1)");
-        if (mvType === "OUT" && qty > MOVING_LOT.qtyRemaining) {
+        if ((mvType === "OUT" || mvType === "RENT") && qty > MOVING_LOT.qtyRemaining) {
           return toast(`สต็อกคงเหลือใน Lot นี้มีเพียง ${MOVING_LOT.qtyRemaining} ชิ้น`);
         }
       }
       const btn = document.getElementById("btnSaveMove");
-      btn.disabled = true;
+      setBtnBusy_(btn, true);
       callApi("moveStock", "apiMoveStock", [SESSION_TOKEN, {
           lotId: MOVING_LOT.lotId,
           moveType: mvType,
@@ -4769,7 +4829,7 @@
           warrantyEnd: document.getElementById("mvWarranty").value,
           note: document.getElementById("mvNote").value
         }], res => {
-          btn.disabled = false;
+          setBtnBusy_(btn, false);
           if (!res || !res.ok) return handleApiError_(res, "บันทึกไม่สำเร็จ");
           closeModal("moveStockModal");
           toast(`บันทึกการเคลื่อนไหว ${res.moveId} แล้ว`);
