@@ -4284,6 +4284,29 @@
       callApi(isEdit ? "updateProduct" : "addProduct", isEdit ? "apiUpdateProduct" : "apiAddProduct", [SESSION_TOKEN, payload], res => {
           btn.disabled = false;
           if (!res || !res.ok) return handleApiError_(res, isEdit ? "แก้ไขสินค้าไม่สำเร็จ" : "เพิ่มสินค้าไม่สำเร็จ");
+          STATE.inventory = STATE.inventory || { products: [], lots: [], serials: [], movements: [] };
+          STATE.inventory.products = STATE.inventory.products || [];
+          const coKey = payload.company;
+          const pnKey = res.productNumber || payload.productNumber;
+          const existingIdx = STATE.inventory.products.findIndex(x => x.company === coKey && x.productNumber === pnKey);
+          const prev = existingIdx >= 0 ? STATE.inventory.products[existingIdx] : null;
+          const nextProd = {
+            row: res.row || (prev ? prev.row : STATE.inventory.products.length + 2),
+            company: coKey,
+            productNumber: pnKey,
+            name: payload.name,
+            category: payload.category,
+            unit: payload.unit || "ชิ้น",
+            trackingMode: payload.trackingMode === "Lot+Serial" ? "Lot+Serial" : "Lot",
+            defaultCost: Number(payload.defaultCost) || 0,
+            defaultPrice: Number(payload.defaultPrice) || 0,
+            rentPrice: Number(payload.rentPrice) || 0,
+            totalStock: prev ? (Number(prev.totalStock) || 0) : 0,
+            minStock: parseInt(payload.minStock, 10) || 0,
+            status: "Active"
+          };
+          if (existingIdx >= 0) STATE.inventory.products[existingIdx] = nextProd;
+          else STATE.inventory.products.push(nextProd);
           closeModal("productModal");
           toast(isEdit ? `อัปเดตสินค้า ${res.productNumber} แล้ว` : `เพิ่มสินค้า ${res.productNumber} แล้ว`);
           loadData(false, true);
